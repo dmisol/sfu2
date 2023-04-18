@@ -32,7 +32,8 @@ RUN apt-get update && \
 VOLUME /tmp
 
 COPY --from=build /app/main ./main
-COPY index.html ./index.html
+COPY static ./static
+COPY conf.yaml ./conf.yaml
 
 ENTRYPOINT ["/bin/sh", "-c", "./main >> /tmp/sfu2.txt 2>&1"]
 #ENTRYPOINT ["/bin/sh", "-c", "ls -al /static/demo"]

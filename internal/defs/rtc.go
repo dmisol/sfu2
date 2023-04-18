@@ -11,7 +11,8 @@ type Room interface {
 	AddPeerConnecrion(PeerConnectionState)
 	SignalPeerConnections()
 
-	AddTrack(*webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP
+	AddTrack(*webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP // inherited - creates track from remote
+	AddSyntheticTrack(trackLocal *webrtc.TrackLocalStaticRTP) // just appends track local
 	RemoveTrack(*webrtc.TrackLocalStaticRTP)
 }
 

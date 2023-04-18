@@ -119,6 +119,14 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	return trackLocal
 }
 
+func (room *Room) AddSyntheticTrack(trackLocal *webrtc.TrackLocalStaticRTP) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	id := trackLocal.ID()
+	room.trackLocals[id] = trackLocal
+}
+
 // Remove from list of tracks and fire renegotation for all PeerConnections
 func (room *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
 	room.mu.Lock()

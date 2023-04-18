@@ -95,12 +95,14 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
-	var aiBot *bot.Bot
+	var mediaProc defs.Media
 	if runBot {
-		aiBot = bot.NewBot(room) // to enambe bot act as a peer
+		aiBot := bot.NewBot() // to enambe bot act as a peer
 		go aiBot.Run(ctx)
+		mediaProc = media.NewRegularMedia(room, aiBot)
+	} else {
+		mediaProc = media.NewRegularMedia(room, nil)
 	}
-	mediaProc := media.NewRegularMedia(room, aiBot)
 
 	peerConnection.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println(t.Codec(), t.ID(), t.StreamID())

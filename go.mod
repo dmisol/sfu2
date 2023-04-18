@@ -3,6 +3,7 @@ module github.com/dmisol/sfu2
 go 1.19
 
 require (
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/webrtc/v3 v3.1.59
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
 	github.com/pion/dtls/v2 v2.2.6 // indirect
 	github.com/pion/ice/v2 v2.3.2 // indirect

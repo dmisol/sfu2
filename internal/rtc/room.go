@@ -22,7 +22,7 @@ type websocketMessage struct {
 
 func NewRoom() *Room {
 	r := &Room{
-		trackLocals: make(map[string]*webrtc.TrackLocalStaticRTP),
+		trackLocals: make(map[string]webrtc.TrackLocal),
 	}
 
 	m := webrtc.MediaEngine{}
@@ -98,7 +98,7 @@ type Room struct {
 	// lock for peerConnections and trackLocals
 	mu              sync.RWMutex
 	peerConnections []defs.PeerConnectionState
-	trackLocals     map[string]*webrtc.TrackLocalStaticRTP
+	trackLocals     map[string]webrtc.TrackLocal
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
@@ -116,19 +116,21 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	}
 
 	room.trackLocals[t.ID()] = trackLocal
+	log.Println("track added", t.Kind(), t.ID())
 	return trackLocal
 }
 
-func (room *Room) AddSyntheticTrack(trackLocal *webrtc.TrackLocalStaticRTP) {
+func (room *Room) AddSyntheticTrack(trackLocal webrtc.TrackLocal) {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 
 	id := trackLocal.ID()
 	room.trackLocals[id] = trackLocal
+	log.Println("synthetic track added", trackLocal.Kind(), trackLocal.ID())
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (room *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
+func (room *Room) RemoveTrack(t webrtc.TrackLocal) {
 	room.mu.Lock()
 	defer func() {
 		room.mu.Unlock()
@@ -136,6 +138,7 @@ func (room *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
 	}()
 
 	delete(room.trackLocals, t.ID())
+	log.Println("track removed", t.ID(), t.Kind())
 }
 
 // SignalPeerConnections updates each PeerConnection so that it is getting all the expected media tracks

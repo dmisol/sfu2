@@ -1,19 +1,13 @@
 package media
 
-// #cgo linux CFLAGS: -I/usr/include/opus
-// #cgo linux LDFLAGS: -L/usr/lib/x86_64-linux-gnu -lopus
-// #include <opus.h>
-import "C"
-
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"sync/atomic"
 
 	"github.com/dmisol/sfu2/internal/defs"
+	"github.com/dmisol/sfu2/internal/media/opus"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -62,13 +56,26 @@ func (m *RegularMedia) OnAudioTrack(t *webrtc.TrackRemote) {
 	trackLocal := m.room.AddTrack(t)
 	defer m.room.RemoveTrack(trackLocal)
 
-	var dec *C.OpusDecoder
+	var dec *opus.OpusDecoder
+
+	/*
+		// debugging!
+		var enc *opus.OpusEncoder
+		var dec2 *opus.OpusDecoder
+	*/
 
 	if atomic.LoadInt32(&m.useBot) > 0 {
-		e := C.int(0)
-		er := &e
-		dec = C.opus_decoder_create(C.int(opusRate), C.int(audiochan), er)
-		defer C.opus_decoder_destroy(dec)
+
+		dec = opus.NewOpusDecoder(3)
+		defer dec.Close()
+
+		/*
+			// debugging!
+			enc = opus.NewOpusEncoder()
+			defer enc.Close()
+			dec2 = opus.NewOpusDecoder(3)
+			defer dec2.Close()
+		*/
 
 		sid := fmt.Sprintf("bot_stm_%s", t.StreamID())
 		tid := fmt.Sprintf("bot_audio_%s", t.ID())
@@ -88,25 +95,47 @@ func (m *RegularMedia) OnAudioTrack(t *webrtc.TrackRemote) {
 		}
 
 		if atomic.LoadInt32(&m.useBot) > 0 {
-			samplesPerFrame := int(C.opus_packet_get_samples_per_frame((*C.uchar)(&p.Payload[0]), C.int(48000)))
+			pcm16k, err := dec.Decode(p.Payload)
 
-			pcm := make([]int16, samplesPerFrame)
-			samples := C.opus_decode(dec, (*C.uchar)(&p.Payload[0]), C.opus_int32(len(p.Payload)), (*C.opus_int16)(&pcm[0]), C.int(cap(pcm)/audiochan), 0)
-			if samples < 0 {
-				log.Println("opus decoding failed")
-				return
-			}
+			/*
+				pcm48k, err := dec.Dec(p.Payload)
+				if err != nil {
+					log.Println("decoding", err)
+					atomic.StoreInt32(&m.useBot, 0)
+				}
+				b, err := enc.Enc(pcm48k)
+				if err != nil {
+					log.Println("encoding", err)
+					atomic.StoreInt32(&m.useBot, 0)
+				}
+				//log.Println(len(p.Payload), len(b))
+				pcm16k, err := dec2.Decode(b)
+			*/
 
-			pcmData := make([]byte, 0)
-			pcmBuffer := bytes.NewBuffer(pcmData)
-			for _, v := range pcm {
-				binary.Write(pcmBuffer, binary.LittleEndian, v)
-			}
+			/*
+				bs48k, err := dec2.Decode(p.Payload)
+				if err != nil {
+					log.Println("decoding", err)
+					atomic.StoreInt32(&m.useBot, 0)
+				}
+				//fmt.Printf("dec bytes: %d %2x %2x %2x %2x \t", len(bs48k), bs48k[0], bs48k[1], bs48k[2], bs48k[3])
+				b, err := enc.Encode(bs48k)
+				if err != nil {
+					log.Println("encoding", err)
+					atomic.StoreInt32(&m.useBot, 0)
+				}
+				pcm16k, err := dec2.Decode(b) // 48k infact
+			*/
 
-			_, err := m.xGress.Write(pcmBuffer.Bytes())
 			if err != nil {
-				log.Println("bot write error")
+				log.Println("decoding", err)
 				atomic.StoreInt32(&m.useBot, 0)
+			} else {
+				_, err := m.xGress.Write(pcm16k)
+				if err != nil {
+					log.Println("bot write error")
+					atomic.StoreInt32(&m.useBot, 0)
+				}
 			}
 		}
 

@@ -12,8 +12,8 @@ type Room interface {
 	SignalPeerConnections()
 
 	AddTrack(*webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP // inherited - creates track from remote
-	AddSyntheticTrack(trackLocal *webrtc.TrackLocalStaticRTP) // just appends track local
-	RemoveTrack(*webrtc.TrackLocalStaticRTP)
+	AddSyntheticTrack(trackLocal webrtc.TrackLocal)           // just appends track local
+	RemoveTrack(webrtc.TrackLocal)
 }
 
 type Media interface {

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/url"
 	"sync/atomic"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+var errNotConected = errors.New("bot not connected")
 
 func NewBot() *Bot {
 	b := &Bot{}
@@ -100,9 +103,8 @@ func (b *Bot) Write(pcm []byte) (int, error) {
 		}
 
 		return len(pcm), err
-
 	}
-	return 0, nil
+	return 0, errNotConected
 }
 
 func (b *Bot) Read(pcm []byte) (int, error) {
@@ -128,5 +130,5 @@ func (b *Bot) Read(pcm []byte) (int, error) {
 		atomic.AddInt32(&b.bytesIn, int32(len(buf)))
 		return len(buf), nil
 	}
-	return 0, nil
+	return 0, errNotConected
 }

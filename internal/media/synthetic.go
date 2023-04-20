@@ -38,11 +38,7 @@ func (m *RegularMedia) RunPcmTrack(stmid string, tid string, audio io.Reader) {
 
 	// 2. m.room.AddSyntheticTrack()
 	m.room.AddSyntheticTrack(t)
-	log.Println("ingress track added", t.ID())
-	defer func() {
-		m.room.RemoveTrack(t)
-		log.Println("ingress track removed", t.ID())
-	}()
+	defer m.room.RemoveTrack(t)
 
 	// 3. encoder
 	enc := opus.NewOpusEncoder()
@@ -57,6 +53,7 @@ func (m *RegularMedia) RunPcmTrack(stmid string, tid string, audio io.Reader) {
 		i, err := audio.Read(rd)
 		if err != nil {
 			log.Println("synth rd", err)
+			return
 		}
 		if i > 0 && err == nil {
 			in = append(in, rd[:i]...)

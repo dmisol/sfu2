@@ -20,8 +20,9 @@ type websocketMessage struct {
 	Data  string `json:"data"`
 }
 
-func NewRoom() *Room {
+func NewRoom(c *defs.Conf) *Room {
 	r := &Room{
+		Conf:        c,
 		trackLocals: make(map[string]webrtc.TrackLocal),
 	}
 
@@ -93,7 +94,8 @@ func NewRoom() *Room {
 }
 
 type Room struct {
-	api *webrtc.API
+	api  *webrtc.API
+	Conf *defs.Conf
 
 	// lock for peerConnections and trackLocals
 	mu              sync.RWMutex
@@ -267,5 +269,5 @@ func (room *Room) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ftar := r.URL.Query().Get("ftar")
 	log.Println(ftar, runBot)
 
-	NewUser(room, w, r)
+	NewUser(room, room.Conf, w, r)
 }

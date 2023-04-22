@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"sync/atomic"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,16 +12,14 @@ import (
 var errNotConected = errors.New("bot not connected")
 
 const (
-	botUrl = "ws://localhost:8081/ws"
-
 	wsRun int32 = iota
 	wsClosed
 )
 
-func NewBot(ctx context.Context) *Bot {
+func NewBot(ctx context.Context, url string) *Bot {
 	b := &Bot{}
 
-	c, _, err := websocket.DefaultDialer.Dial(botUrl, nil)
+	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		log.Println("bot start failed", err)
 		b.wsOk = wsClosed
@@ -37,18 +34,6 @@ func NewBot(ctx context.Context) *Bot {
 type Bot struct {
 	ws   *websocket.Conn // to send audio
 	wsOk int32
-
-	// f *os.File
-
-	bytesOut int
-	bytesIn  int32
-
-	t time.Time
-	/*
-	   // testing endorer!
-	   mu  sync.Mutex
-	   tst [][]byte
-	*/
 }
 
 func (b *Bot) run(ctx context.Context) {
@@ -69,20 +54,6 @@ func (b *Bot) Close() error {
 }
 
 func (b *Bot) Write(pcm []byte) (int, error) {
-
-	t := time.Now()
-	if t.Second() != b.t.Second() {
-
-		bi := atomic.LoadInt32(&b.bytesIn)
-		atomic.AddInt32(&b.bytesIn, -bi)
-
-		log.Println("bot egress:", b.bytesOut, "ingress", bi)
-		b.t = t
-		b.bytesOut = 0
-	}
-
-	b.bytesOut += len(pcm)
-
 	if atomic.LoadInt32(&b.wsOk) == wsRun {
 		err := b.ws.WriteMessage(websocket.BinaryMessage, pcm)
 		if err != nil {
@@ -104,7 +75,6 @@ func (b *Bot) Read(pcm []byte) (int, error) {
 			return 0, err
 		}
 		copy(pcm, buf)
-		atomic.AddInt32(&b.bytesIn, int32(len(buf)))
 		return len(buf), nil
 	}
 	log.Println("bot not connected")

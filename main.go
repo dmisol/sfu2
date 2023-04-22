@@ -31,7 +31,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	room := rtc.NewRoom()
+	room := rtc.NewRoom(c)
 	// websocket handler
 	http.HandleFunc("/ws", room.WebsocketHandler)
 

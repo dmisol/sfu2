@@ -41,7 +41,6 @@ func (d *OpusDecoder) Dec(payload []byte) ([]int16, error) {
 		log.Println("opus decoding failed")
 		return nil, errors.New("opus decoding failed")
 	}
-	//fmt.Printf("dec: %dsamples, %d %04X %04X \t", samples, len(pcm), pcm[0], pcm[1])
 	return pcm, nil
 }
 
@@ -53,7 +52,6 @@ func (d *OpusDecoder) Decode(payload []byte) ([]byte, error) {
 
 	out := make([]byte, 0)
 	outBuffer := bytes.NewBuffer(out)
-	// resample and return as []byte
 	i := 0
 	for _, v := range pcm {
 		if i == 0 {

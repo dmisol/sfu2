@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"net/url"
 	"sync/atomic"
 	"time"
 
@@ -13,18 +12,25 @@ import (
 
 var errNotConected = errors.New("bot not connected")
 
-func NewBot() *Bot {
+const (
+	botUrl = "ws://localhost:8081/ws"
+
+	wsRun int32 = iota
+	wsClosed
+)
+
+func NewBot(ctx context.Context) *Bot {
 	b := &Bot{}
 
-	/*
-		// testing now: write to file
-		f, err := os.Create(path.Join("/tmp", fmt.Sprintf("%s.pcm", uuid.NewString())))
-		if err != nil {
-			log.Println("test file", err)
-			return nil
-		}
-		b.f = f
-	*/
+	c, _, err := websocket.DefaultDialer.Dial(botUrl, nil)
+	if err != nil {
+		log.Println("bot start failed", err)
+		b.wsOk = wsClosed
+		return b
+	}
+	b.ws = c
+	b.wsOk = wsRun
+	go b.run(ctx)
 	return b
 }
 
@@ -45,25 +51,16 @@ type Bot struct {
 	*/
 }
 
-func (b *Bot) Run(ctx context.Context) {
-	u := url.URL{Scheme: "ws", Host: "localhost:8081", Path: "/ws"}
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Println("bot start failed", err)
-		return
-	}
-	defer c.Close()
-	b.ws = c
-	atomic.StoreInt32(&b.wsOk, 1)
+func (b *Bot) run(ctx context.Context) {
+	defer b.ws.Close()
 
 	<-ctx.Done()
 	log.Println("bot done")
 }
 
 func (b *Bot) Close() error {
-	if atomic.LoadInt32(&b.wsOk) == 1 {
-		atomic.StoreInt32(&b.wsOk, 0)
-		// b.f.Close()
+	if atomic.LoadInt32(&b.wsOk) == wsRun {
+		atomic.StoreInt32(&b.wsOk, wsClosed)
 		if b.ws != nil {
 			b.ws.Close()
 		}
@@ -72,11 +69,6 @@ func (b *Bot) Close() error {
 }
 
 func (b *Bot) Write(pcm []byte) (int, error) {
-	/*
-		b.mu.Lock()
-		b.tst = append(b.tst, pcm)
-		b.mu.Unlock()
-	*/
 
 	t := time.Now()
 	if t.Second() != b.t.Second() {
@@ -90,15 +82,11 @@ func (b *Bot) Write(pcm []byte) (int, error) {
 	}
 
 	b.bytesOut += len(pcm)
-	/*
-		if b.f != nil {
-			_, _ = b.f.Write(pcm)
-		}
-	*/
-	if atomic.LoadInt32(&b.wsOk) == 1 {
+
+	if atomic.LoadInt32(&b.wsOk) == wsRun {
 		err := b.ws.WriteMessage(websocket.BinaryMessage, pcm)
 		if err != nil {
-			atomic.StoreInt32(&b.wsOk, 0)
+			atomic.StoreInt32(&b.wsOk, wsClosed)
 			log.Println("bot egress error", err)
 		}
 
@@ -108,27 +96,17 @@ func (b *Bot) Write(pcm []byte) (int, error) {
 }
 
 func (b *Bot) Read(pcm []byte) (int, error) {
-	/*
-		b.mu.Lock()
-		defer b.mu.Unlock()
-
-		if len(b.tst) > 0 {
-			pcm, b.tst = b.tst[0], b.tst[1:]
-			return 1920, nil
-		}
-		return 0, nil
-	*/
-	if atomic.LoadInt32(&b.wsOk) == 1 {
+	if atomic.LoadInt32(&b.wsOk) == wsRun {
 		_, buf, err := b.ws.ReadMessage()
 		if err != nil {
-			atomic.StoreInt32(&b.wsOk, 0)
-			log.Println("ingress error", err)
+			atomic.StoreInt32(&b.wsOk, wsClosed)
+			log.Println("bot rd", err)
 			return 0, err
 		}
-		//log.Println("ingress", mt, len(buf))
-		pcm = buf
+		copy(pcm, buf)
 		atomic.AddInt32(&b.bytesIn, int32(len(buf)))
 		return len(buf), nil
 	}
+	log.Println("bot not connected")
 	return 0, errNotConected
 }

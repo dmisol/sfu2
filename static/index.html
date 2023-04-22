@@ -21,9 +21,11 @@
         .then(stream => {
             let pc = new RTCPeerConnection()
             pc.ontrack = function(event) {
-                if (event.track.kind === 'audio') {
-                    return
-                }
+                console.log(event.track.kind + "-->" + event.track.id)
+                    // TODO: mark somehow audio-only streams
+                    //                if (event.track.kind === 'audio') {
+                    //                    return
+                    //                }
 
                 let el = document.createElement(event.track.kind)
                 el.srcObject = event.streams[0]
@@ -84,8 +86,8 @@
                         if (!offer) {
                             return console.log('failed to parse answer')
                         }
-                        console.log("got offer:")
-                        console.log(offer.sdp)
+                        //console.log("got offer:")
+                        //console.log(offer.sdp)
 
                         pc.setRemoteDescription(offer)
                         pc.createAnswer().then(answer => {
@@ -95,8 +97,8 @@
                                 data: JSON.stringify(answer)
                             }))
 
-                            console.log(" sent answer:")
-                            console.log(answer)
+                            //console.log(" sent answer:")
+                            //console.log(answer)
                         })
                         return
 

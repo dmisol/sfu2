@@ -1,6 +1,7 @@
 package defs
 
 import (
+	"context"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -17,8 +18,8 @@ type Room interface {
 }
 
 type Media interface {
-	OnAudioTrack(*webrtc.TrackRemote)
-	OnVideoTrack(*webrtc.TrackRemote)
+	OnAudioTrack(context.Context, *webrtc.TrackRemote)
+	OnVideoTrack(context.Context, *webrtc.TrackRemote)
 }
 
 type PeerConnectionState struct {

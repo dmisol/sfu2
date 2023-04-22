@@ -97,8 +97,7 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 
 	var mediaProc defs.Media
 	if runBot {
-		aiBot := bot.NewBot() // to enambe bot act as a peer
-		go aiBot.Run(ctx)
+		aiBot := bot.NewBot(ctx) // to enambe bot act as a peer
 		mediaProc = media.NewRegularMedia(room, aiBot)
 	} else {
 		mediaProc = media.NewRegularMedia(room, nil)
@@ -107,9 +106,9 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 	peerConnection.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println(t.Codec(), t.ID(), t.StreamID())
 		if t.Kind() == webrtc.RTPCodecTypeAudio {
-			mediaProc.OnAudioTrack(t)
+			mediaProc.OnAudioTrack(ctx, t)
 		} else {
-			mediaProc.OnVideoTrack(t)
+			mediaProc.OnVideoTrack(ctx, t)
 		} // Create a track to fan out our incoming video to all peers
 	})
 

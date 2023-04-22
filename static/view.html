@@ -12,9 +12,8 @@
 <script>
     let pc = new RTCPeerConnection()
     pc.ontrack = function(event) {
-        if (event.track.kind === 'audio') {
-            return
-        }
+        console.log(event.track.kind)
+        console.log(event.track.id)
 
         let el = document.createElement(event.track.kind)
         el.srcObject = event.streams[0]

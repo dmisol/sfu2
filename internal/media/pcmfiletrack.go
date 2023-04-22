@@ -1,13 +1,11 @@
 package media
 
-// #cgo linux CFLAGS: -I/usr/include/opus
-// #cgo linux LDFLAGS: -L/usr/lib/x86_64-linux-gnu -lopus
-// #include <opus.h>
-import "C"
-
 import (
+	"context"
 	"io"
 	"log"
+	"os"
+	"path"
 	"time"
 
 	"github.com/dmisol/sfu2/internal/media/opus"
@@ -15,12 +13,15 @@ import (
 	ms "github.com/pion/webrtc/v3/pkg/media"
 )
 
-const (
-	bytes20ms = 1920
-)
+func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string, tid string, audio io.Reader) {
+	b, err := os.ReadFile(path.Join("testdata", "48k.raw"))
+	if err != nil {
+		log.Println("file read", err)
+		return
+	}
 
-func (m *RegularMedia) RunPcmTrack(stmid string, tid string, audio io.Reader) {
-	// 1. create trackLocalStaticRTP for bot's responses
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
 
 	// TODO: force ptime ?
 	t, err := webrtc.NewTrackLocalStaticSample(
@@ -44,28 +45,18 @@ func (m *RegularMedia) RunPcmTrack(stmid string, tid string, audio io.Reader) {
 	enc := opus.NewOpusEncoder()
 	defer enc.Close()
 
-	var in []byte
-	rd := make([]byte, 10000)
-	last := time.Now()
+	ind := 0
+	var x []byte
 	for {
-		// 4. { read, encode, write to trackLocal }
-
-		i, err := audio.Read(rd)
-		if err != nil {
-			log.Println("synth rd", err)
-			return
-		}
-		if i > 0 && err == nil {
-			in = append(in, rd[:i]...)
-			//log.Println("appended; in", i, len(in))
-		}
-
-		now := time.Now()
-		var x []byte
-		if (len(in) > bytes20ms) && now.Add(-19900*time.Microsecond).After(last) {
-			last = now
-
-			x, in = in[:bytes20ms], in[bytes20ms:]
+		select {
+		case <-tick.C:
+			if ind+bytes20ms < len(b) {
+				x = b[ind : ind+bytes20ms]
+				ind += bytes20ms
+			} else {
+				ind = 0
+				x = b[:bytes20ms]
+			}
 			encoded, err := enc.Encode(x)
 			if err != nil {
 				log.Println("audio encoding error", err)
@@ -74,8 +65,11 @@ func (m *RegularMedia) RunPcmTrack(stmid string, tid string, audio io.Reader) {
 
 			if err := t.WriteSample(ms.Sample{Data: encoded, Duration: 20 * time.Millisecond}); err != nil {
 				log.Println("synthetic write error", err)
+				return
 			}
-			//log.Println("sent; in", len(in))
+		case <-ctx.Done():
+			log.Println("file track ctx")
+			return
 		}
 	}
 }

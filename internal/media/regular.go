@@ -1,13 +1,14 @@
 package media
 
 import (
-	"fmt"
+	"context"
 	"io"
 	"log"
 	"sync/atomic"
 
 	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/dmisol/sfu2/internal/media/opus"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -35,7 +36,7 @@ type RegularMedia struct {
 	xGress io.ReadWriter
 }
 
-func (m *RegularMedia) OnVideoTrack(t *webrtc.TrackRemote) {
+func (m *RegularMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemote) {
 	trackLocal := m.room.AddTrack(t)
 	defer m.room.RemoveTrack(trackLocal)
 
@@ -52,7 +53,7 @@ func (m *RegularMedia) OnVideoTrack(t *webrtc.TrackRemote) {
 	}
 }
 
-func (m *RegularMedia) OnAudioTrack(t *webrtc.TrackRemote) {
+func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) {
 	trackLocal := m.room.AddTrack(t)
 	defer m.room.RemoveTrack(trackLocal)
 
@@ -77,9 +78,11 @@ func (m *RegularMedia) OnAudioTrack(t *webrtc.TrackRemote) {
 			defer dec2.Close()
 		*/
 
-		sid := fmt.Sprintf("bot_stm_%s", t.StreamID())
-		tid := fmt.Sprintf("bot_audio_%s", t.ID())
-		go m.RunPcmTrack(sid, tid, m.xGress)
+		sid := uuid.NewString()
+		tid := uuid.NewString()
+
+		//go m.RunPcmFileTrack(ctx, sid, tid, m.xGress)
+		go m.RunPcmTrack(ctx, sid, tid, m.xGress)
 	}
 
 	for {

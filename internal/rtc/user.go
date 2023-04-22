@@ -13,13 +13,12 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
+func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	runBot := r.URL.Query().Has("bot")
 
-	// Upgrade HTTP request to Websocket
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -32,8 +31,7 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 
 	c := &defs.ThreadSafeWriter{Conn: unsafeConn}
 
-	// When this frame returns close the Websocket
-	defer c.Close() //nolint
+	defer c.Close()
 	go func() {
 		<-ctx.Done()
 		log.Println("context timeout")
@@ -47,7 +45,6 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// When this frame returns close the PeerConnection
 	defer peerConnection.Close() //nolint
 
 	// Accept one audio and one video track incoming
@@ -97,7 +94,7 @@ func NewUser(room defs.Room, w http.ResponseWriter, r *http.Request) {
 
 	var mediaProc defs.Media
 	if runBot {
-		aiBot := bot.NewBot(ctx) // to enambe bot act as a peer
+		aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
 		mediaProc = media.NewRegularMedia(room, aiBot)
 	} else {
 		mediaProc = media.NewRegularMedia(room, nil)

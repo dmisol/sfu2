@@ -55,7 +55,6 @@ func (a *audioFifo) Read20ms() ([]byte, error) {
 		return a.pcm, nil
 	}
 
-	//log.Println("pcm fifo gone")
 	atomic.StoreInt32(&a.filled, 0)
 	for i := 0; i < bytes20ms; i++ {
 		a.pcm[i] = 0
@@ -76,7 +75,6 @@ func (a *audioFifo) run() {
 		a.mu.Lock()
 		a.fifo = append(a.fifo, rd[:i]...)
 		if len(a.fifo) >= filledFifo {
-			//log.Println("pcm fifo ready")
 			atomic.StoreInt32(&a.filled, 1)
 		}
 		a.mu.Unlock()
@@ -115,7 +113,7 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string
 				log.Println("fifo read err")
 				return
 			}
-			// TODO: upscale here (x3), keeping last value from prev buffer
+			// TODO: to import @16kHz, upscale here (x3), keeping last value from prev buffer
 			encoded, err := enc.Encode(buf)
 			if err != nil {
 				log.Println("audio encoding error", err)
@@ -126,7 +124,6 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string
 				log.Println("synthetic write error", err)
 				return
 			}
-			//log.Println("WriteSample")
 		case <-ctx.Done():
 			log.Println("file track ctx")
 			return

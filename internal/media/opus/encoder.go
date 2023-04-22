@@ -33,7 +33,6 @@ type OpusEncoder struct {
 
 func (e *OpusEncoder) Encode(bs []byte) ([]byte, error) {
 	in := bs
-	// TODO: upscale
 	var pcm []int16
 	var sample int16
 	var x []byte
@@ -47,7 +46,6 @@ func (e *OpusEncoder) Encode(bs []byte) ([]byte, error) {
 		}
 		pcm = append(pcm, sample)
 	}
-	//fmt.Printf("enc: %dbytes %d %04X %04X \t", len(bs), len(pcm), pcm[0], pcm[1])
 	return e.Enc(pcm)
 }
 

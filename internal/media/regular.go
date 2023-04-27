@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 	"log"
+	"path"
 	"sync/atomic"
 
 	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/dmisol/sfu2/internal/media/opus"
+	"github.com/dmisol/sfu2/internal/videosource"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 )
@@ -15,9 +17,12 @@ import (
 const (
 	audiochan = 1
 	opusRate  = 48000
+
+	runDummy = true
 )
 
-func NewRegularMedia(room defs.Room, bot io.ReadWriter) defs.Media {
+// NewRegularMedia() optionally interfaces audio to bot and creates either a or a+v tracks from bot's responce
+func NewRegularMedia(room defs.Room, bot io.ReadWriter, ftar string) defs.Media {
 	m := &RegularMedia{
 		room: room,
 	}
@@ -25,6 +30,7 @@ func NewRegularMedia(room defs.Room, bot io.ReadWriter) defs.Media {
 		log.Println("using bot")
 		m.xGress = bot
 		m.useBot = 1
+		m.ftar = ftar
 	}
 	return m
 }
@@ -33,6 +39,7 @@ type RegularMedia struct {
 	room   defs.Room
 	useBot int32
 
+	ftar   string
 	xGress io.ReadWriter
 }
 
@@ -59,30 +66,25 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 
 	var dec *opus.OpusDecoder
 
-	/*
-		// debugging!
-		var enc *opus.OpusEncoder
-		var dec2 *opus.OpusDecoder
-	*/
-
 	if atomic.LoadInt32(&m.useBot) > 0 {
 
 		dec = opus.NewOpusDecoder(3)
 		defer dec.Close()
 
-		/*
-			// debugging!
-			enc = opus.NewOpusEncoder()
-			defer enc.Close()
-			dec2 = opus.NewOpusDecoder(3)
-			defer dec2.Close()
-		*/
+		if runDummy {
+			stmid := uuid.NewString()
+			// just for debugging
+			go m.RunPcmFileTrack(ctx, stmid)
+			vs, err := videosource.NewDummySource(path.Join("testdata", "img.jpeg"))
+			if err != nil {
+				log.Println("dummyVideoSource", err)
+			} else {
+				go m.RunH264Track(ctx, stmid, vs)
+			}
+		}
 
-		sid := uuid.NewString()
-		tid := uuid.NewString()
-
-		//go m.RunPcmFileTrack(ctx, sid, tid, m.xGress)
-		go m.RunPcmTrack(ctx, sid, tid, m.xGress)
+		stmid := uuid.NewString()
+		go m.RunPcmTrack(ctx, stmid, m.xGress, m.ftar)
 	}
 
 	for {
@@ -91,7 +93,6 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 			log.Println("packet read error", err)
 			return
 		}
-		//log.Println("rtp", p, len(p.Payload))
 		if len(p.Payload) == 0 {
 			log.Println("rx empty rtp, skipping")
 			continue
@@ -99,36 +100,6 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 
 		if atomic.LoadInt32(&m.useBot) > 0 {
 			pcm16k, err := dec.Decode(p.Payload)
-
-			/*
-				pcm48k, err := dec.Dec(p.Payload)
-				if err != nil {
-					log.Println("decoding", err)
-					atomic.StoreInt32(&m.useBot, 0)
-				}
-				b, err := enc.Enc(pcm48k)
-				if err != nil {
-					log.Println("encoding", err)
-					atomic.StoreInt32(&m.useBot, 0)
-				}
-				//log.Println(len(p.Payload), len(b))
-				pcm16k, err := dec2.Decode(b)
-			*/
-
-			/*
-				bs48k, err := dec2.Decode(p.Payload)
-				if err != nil {
-					log.Println("decoding", err)
-					atomic.StoreInt32(&m.useBot, 0)
-				}
-				//fmt.Printf("dec bytes: %d %2x %2x %2x %2x \t", len(bs48k), bs48k[0], bs48k[1], bs48k[2], bs48k[3])
-				b, err := enc.Encode(bs48k)
-				if err != nil {
-					log.Println("encoding", err)
-					atomic.StoreInt32(&m.useBot, 0)
-				}
-				pcm16k, err := dec2.Decode(b) // 48k infact
-			*/
 
 			if err != nil {
 				log.Println("decoding", err)

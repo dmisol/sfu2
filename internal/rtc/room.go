@@ -64,19 +64,17 @@ func NewRoom(c *defs.Conf) *Room {
 	tcpMux := webrtc.NewICETCPMux(nil, tcpListener, 8)
 	settingEngine.SetICETCPMux(tcpMux)
 
-	/*
-		udpListener, err := net.ListenUDP("udp", &net.UDPAddr{
-			IP:   net.IP{0, 0, 0, 0},
-			Port: MediaPort,
-		})
-		if err != nil {
-			log.Println("listenUDP()", err)
-			return
-		}
+	udpListener, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IP{0, 0, 0, 0},
+		Port: 3478,
+	})
+	if err != nil {
+		log.Println("listenUDP()", err)
+		return nil
+	}
 
-		udpMux := webrtc.NewICEUDPMux(nil, udpListener)
-		settingEngine.SetICEUDPMux(udpMux)
-	*/
+	udpMux := webrtc.NewICEUDPMux(nil, udpListener)
+	settingEngine.SetICEUDPMux(udpMux)
 
 	r.api = webrtc.NewAPI(
 		webrtc.WithMediaEngine(&m),
@@ -124,11 +122,14 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 
 func (room *Room) AddSyntheticTrack(trackLocal webrtc.TrackLocal) {
 	room.mu.Lock()
-	defer room.mu.Unlock()
+	defer func() {
+		room.mu.Unlock()
+		room.SignalPeerConnections()
+	}()
 
 	id := trackLocal.ID()
 	room.trackLocals[id] = trackLocal
-	log.Println("synthetic track added", trackLocal.Kind(), trackLocal.ID())
+	log.Println("synthetic", trackLocal.StreamID(), "added", trackLocal.Kind(), trackLocal.ID())
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections

@@ -18,6 +18,7 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 	defer cancel()
 
 	runBot := r.URL.Query().Has("bot")
+	ftar := r.URL.Query().Get("ftar")
 
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
@@ -95,9 +96,9 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 	var mediaProc defs.Media
 	if runBot {
 		aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
-		mediaProc = media.NewRegularMedia(room, aiBot)
+		mediaProc = media.NewRegularMedia(room, aiBot, ftar)
 	} else {
-		mediaProc = media.NewRegularMedia(room, nil)
+		mediaProc = media.NewRegularMedia(room, nil, "")
 	}
 
 	peerConnection.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {

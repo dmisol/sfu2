@@ -2,18 +2,20 @@ package media
 
 import (
 	"context"
-	"io"
 	"log"
 	"os"
 	"path"
 	"time"
 
 	"github.com/dmisol/sfu2/internal/media/opus"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	ms "github.com/pion/webrtc/v3/pkg/media"
 )
 
-func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string, tid string, audio io.Reader) {
+func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string) {
+	tid := uuid.NewString()
+
 	b, err := os.ReadFile(path.Join("testdata", "48k.raw"))
 	if err != nil {
 		log.Println("file read", err)

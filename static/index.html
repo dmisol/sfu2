@@ -21,16 +21,18 @@
         .then(stream => {
             let pc = new RTCPeerConnection()
             pc.ontrack = function(event) {
-                console.log(event.track.kind + "-->" + event.track.id)
-                    // TODO: mark somehow audio-only streams
-                    //                if (event.track.kind === 'audio') {
-                    //                    return
-                    //                }
+                console.log("add" + event.track.kind + "-->" + event.track.id)
+                    // TODO: mark somehow audio-only streams if occur 
+                if (event.track.kind === 'audio') {
+                    return
+                }
 
                 let el = document.createElement(event.track.kind)
                 el.srcObject = event.streams[0]
                 el.autoplay = true
                 el.controls = true
+                el.width = "160"
+                el.height = "120"
                 document.getElementById('remoteVideos').appendChild(el)
 
                 event.track.onmute = function(event) {
@@ -44,6 +46,9 @@
                         el.parentNode.removeChild(el)
                     }
                 }
+            }
+            pc.onremovetrack = function(event) {
+                console.log("rem" + event.track.kind + "-->" + event.track.id)
             }
 
             document.getElementById('localVideo').srcObject = stream

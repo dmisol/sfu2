@@ -33,6 +33,7 @@ VOLUME /tmp
 
 COPY --from=build /app/main ./main
 COPY static ./static
+COPY testdata ./testdata
 COPY conf.yaml ./conf.yaml
 
 ENTRYPOINT ["/bin/sh", "-c", "./main >> /tmp/sfu2.txt 2>&1"]

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dmisol/sfu2/internal/media/opus"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	ms "github.com/pion/webrtc/v3/pkg/media"
 )
@@ -81,8 +82,10 @@ func (a *audioFifo) run() {
 	}
 }
 
-func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string, audio io.Reader) {
-	t, err := webrtc.NewTrackLocalStaticSample(
+func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.Reader, ftar string) {
+	tid := uuid.NewString()
+
+	ta, err := webrtc.NewTrackLocalStaticSample(
 		webrtc.RTPCodecCapability{
 			MimeType:     "audio/opus",
 			ClockRate:    48000,
@@ -94,9 +97,19 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string
 		log.Println("local track creating", err)
 		return
 	}
+	m.room.AddSyntheticTrack(ta)
+	defer m.room.RemoveTrack(ta)
 
-	m.room.AddSyntheticTrack(t)
-	defer m.room.RemoveTrack(t)
+	var anim io.WriteCloser
+	var delayCntr int
+	/*
+		if len(ftar) > 0 {
+				anim = animator.NewPcmAnimator(ctx, m.room, stmid, ftar)
+				delayCntr = animator.DelayPackets
+				defer anim.Close()
+
+		}
+	*/
 
 	enc := opus.NewOpusEncoder()
 	defer enc.Close()
@@ -105,10 +118,18 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string
 	defer tick.Stop()
 
 	fifo := newAudioFifo(audio)
+	var delayFifo [][]byte
 	for {
 		select {
 		case <-tick.C:
 			buf, err := fifo.Read20ms()
+			if delayCntr > 0 {
+				if _, err := anim.Write(buf); err != nil {
+					log.Println("anim write", err)
+					return
+				}
+			}
+
 			if err != nil {
 				log.Println("fifo read err")
 				return
@@ -119,8 +140,15 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, tid string
 				log.Println("audio encoding error", err)
 				return
 			}
+			if delayCntr > 0 {
+				delayFifo = append(delayFifo, encoded)
+				if len(delayFifo) < delayCntr { // fill fifo first
+					continue
+				}
+				encoded, delayFifo = delayFifo[0], delayFifo[1:]
+			}
 
-			if err := t.WriteSample(ms.Sample{Data: encoded, Duration: 20 * time.Millisecond}); err != nil {
+			if err := ta.WriteSample(ms.Sample{Data: encoded, Duration: 20 * time.Millisecond}); err != nil {
 				log.Println("synthetic write error", err)
 				return
 			}

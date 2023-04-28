@@ -97,7 +97,7 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 		log.Println("local track creating", err)
 		return
 	}
-	m.room.AddSyntheticTrack(ta)
+	m.room.AddSyntheticTrack(ta, nil)
 	defer m.room.RemoveTrack(ta)
 
 	var anim io.WriteCloser

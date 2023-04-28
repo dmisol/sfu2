@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dmisol/sfu2/internal/defs"
@@ -106,7 +107,7 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	room.mu.Lock()
 	defer func() {
 		room.mu.Unlock()
-		room.SignalPeerConnections()
+		room.SignalPeerConnections(nil)
 	}()
 
 	// Create a new TrackLocal with the same codec as our incoming
@@ -120,11 +121,11 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	return trackLocal
 }
 
-func (room *Room) AddSyntheticTrack(trackLocal webrtc.TrackLocal) {
+func (room *Room) AddSyntheticTrack(trackLocal webrtc.TrackLocal, onPli *int32) {
 	room.mu.Lock()
 	defer func() {
 		room.mu.Unlock()
-		room.SignalPeerConnections()
+		room.SignalPeerConnections(onPli)
 	}()
 
 	id := trackLocal.ID()
@@ -137,7 +138,7 @@ func (room *Room) RemoveTrack(t webrtc.TrackLocal) {
 	room.mu.Lock()
 	defer func() {
 		room.mu.Unlock()
-		room.SignalPeerConnections()
+		room.SignalPeerConnections(nil)
 	}()
 
 	delete(room.trackLocals, t.ID())
@@ -145,7 +146,7 @@ func (room *Room) RemoveTrack(t webrtc.TrackLocal) {
 }
 
 // SignalPeerConnections updates each PeerConnection so that it is getting all the expected media tracks
-func (room *Room) SignalPeerConnections() {
+func (room *Room) SignalPeerConnections(onPli *int32) {
 	room.mu.Lock()
 	defer func() {
 		room.mu.Unlock()
@@ -166,7 +167,7 @@ func (room *Room) SignalPeerConnections() {
 				if sender.Track() == nil {
 					continue
 				}
-
+				// TODO: RTCP+PLI
 				existingSenders[sender.Track().ID()] = true
 
 				// If we have a RTPSender that doesn't map to a existing track remove and signal
@@ -189,8 +190,26 @@ func (room *Room) SignalPeerConnections() {
 			// Add all track we aren't sending yet to the PeerConnection
 			for trackID := range room.trackLocals {
 				if _, ok := existingSenders[trackID]; !ok {
-					if _, err := room.peerConnections[i].PeerConnection.AddTrack(room.trackLocals[trackID]); err != nil {
+					if sender, err := room.peerConnections[i].PeerConnection.AddTrack(room.trackLocals[trackID]); err != nil {
 						return true
+					} else {
+						if onPli != nil {
+							go func() {
+								log.Println("staring pli processing")
+								for {
+									pts, _, rtcpErr := sender.ReadRTCP()
+									if rtcpErr != nil {
+										return
+									}
+									for _, p := range pts {
+										if room.isPli(p) {
+											log.Println("got pli")
+											atomic.AddInt32(onPli, 1)
+										}
+									}
+								}
+							}()
+						}
 					}
 				}
 			}
@@ -225,7 +244,7 @@ func (room *Room) SignalPeerConnections() {
 			// Release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
 			go func() {
 				time.Sleep(time.Second * 3)
-				room.SignalPeerConnections()
+				room.SignalPeerConnections(onPli)
 			}()
 			return
 		}
@@ -271,4 +290,12 @@ func (room *Room) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println(ftar, runBot)
 
 	NewUser(room, room.Conf, w, r)
+}
+
+func (room *Room) isPli(p rtcp.Packet) bool {
+	switch p.(type) {
+	case *rtcp.PictureLossIndication:
+		return true
+	}
+	return false
 }

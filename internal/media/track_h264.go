@@ -19,6 +19,7 @@ func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediad
 	}
 	x264Params.Preset = x264.PresetMedium
 	x264Params.BitRate = 1_000_000 // 1mbps
+	x264Params.KeyFrameInterval = 30
 	// log.Println("x264Params")
 
 	codecSelector := mediadevices.NewCodecSelector(
@@ -36,7 +37,13 @@ func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediad
 		log.Println("video track failed", err)
 		return
 	}
-	m.room.AddSyntheticTrack(track)
+
+	bs := &Bootstrap{
+		track: track,
+	}
+
+	// TODO: RTCPReader() ?
+	m.room.AddSyntheticTrack(track, &bs.NeedPli)
 	defer m.room.RemoveTrack(track)
 
 	rr, err := vt.NewRTPReader(x264Params.RTPCodec().MimeType, rand.Uint32(), 1000)
@@ -58,12 +65,9 @@ func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediad
 			log.Println("mediadevices rd", err)
 			return
 		}
-		// log.Println("pkts from image", len(pkts))
-		for _, p := range pkts {
-			if err = track.WriteRTP(p); err != nil {
-				log.Println("writing to track", err)
-				return
-			}
+		if err = bs.Write(pkts); err != nil {
+			log.Println("h264 video done", err)
+			return
 		}
 	}
 }

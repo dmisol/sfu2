@@ -46,6 +46,13 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	/* TODO:
+	sndrs := peerConnection.GetSenders()
+	for k, v := range sndrs {
+		v.ReadRTCP()
+		v.
+	}
+	*/
 	defer peerConnection.Close() //nolint
 
 	// Accept one audio and one video track incoming
@@ -89,7 +96,7 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 				log.Print(err)
 			}
 		case webrtc.PeerConnectionStateClosed:
-			room.SignalPeerConnections()
+			room.SignalPeerConnections(nil)
 		}
 	})
 
@@ -111,7 +118,7 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 	})
 
 	// Signal for the new PeerConnection
-	room.SignalPeerConnections()
+	room.SignalPeerConnections(nil)
 
 	message := &websocketMessage{}
 	for {

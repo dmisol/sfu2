@@ -40,7 +40,7 @@ func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string) {
 	}
 
 	// 2. m.room.AddSyntheticTrack()
-	m.room.AddSyntheticTrack(t)
+	m.room.AddSyntheticTrack(t, nil)
 	defer m.room.RemoveTrack(t)
 
 	// 3. encoder

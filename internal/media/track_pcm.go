@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dmisol/sfu2/internal/media/opus"
+	"github.com/dmisol/sfu2/internal/videosource"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	ms "github.com/pion/webrtc/v3/pkg/media"
@@ -100,16 +101,18 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 	m.room.AddSyntheticTrack(ta, nil)
 	defer m.room.RemoveTrack(ta)
 
-	var anim io.WriteCloser
 	var delayCntr int
-	/*
-		if len(ftar) > 0 {
-				anim = animator.NewPcmAnimator(ctx, m.room, stmid, ftar)
-				delayCntr = animator.DelayPackets
-				defer anim.Close()
 
+	var as *videosource.AnimatedSource
+	if len(ftar) > 0 {
+		as, err = videosource.NewAnimatedSource(ctx)
+		if err != nil {
+			log.Println("can't start video track", err)
+			return
 		}
-	*/
+
+		go m.RunH264Track(ctx, stmid, as)
+	}
 
 	enc := opus.NewOpusEncoder()
 	defer enc.Close()
@@ -123,17 +126,17 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 		select {
 		case <-tick.C:
 			buf, err := fifo.Read20ms()
-			if delayCntr > 0 {
-				if _, err := anim.Write(buf); err != nil {
+			if err != nil {
+				log.Println("fifo read err")
+				return
+			}
+			if as != nil {
+				if err := as.WritePCM(buf); err != nil {
 					log.Println("anim write", err)
 					return
 				}
 			}
 
-			if err != nil {
-				log.Println("fifo read err")
-				return
-			}
 			// TODO: to import @16kHz, upscale here (x3), keeping last value from prev buffer
 			encoded, err := enc.Encode(buf)
 			if err != nil {

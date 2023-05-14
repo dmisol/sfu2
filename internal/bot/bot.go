@@ -21,7 +21,7 @@ func NewBot(ctx context.Context, url string) *Bot {
 
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
-		log.Println("bot start failed", err)
+		b.Println("bot start failed", err)
 		b.wsOk = wsClosed
 		return b
 	}
@@ -40,7 +40,7 @@ func (b *Bot) run(ctx context.Context) {
 	defer b.ws.Close()
 
 	<-ctx.Done()
-	log.Println("bot done")
+	b.Println("bot done")
 }
 
 func (b *Bot) Close() error {
@@ -58,7 +58,7 @@ func (b *Bot) Write(pcm []byte) (int, error) {
 		err := b.ws.WriteMessage(websocket.BinaryMessage, pcm)
 		if err != nil {
 			atomic.StoreInt32(&b.wsOk, wsClosed)
-			log.Println("bot egress error", err)
+			b.Println("bot egress error", err)
 		}
 
 		return len(pcm), err
@@ -71,12 +71,16 @@ func (b *Bot) Read(pcm []byte) (int, error) {
 		_, buf, err := b.ws.ReadMessage()
 		if err != nil {
 			atomic.StoreInt32(&b.wsOk, wsClosed)
-			log.Println("bot rd", err)
+			b.Println("bot rd", err)
 			return 0, err
 		}
 		copy(pcm, buf)
 		return len(buf), nil
 	}
-	log.Println("bot not connected")
+	b.Println("bot not connected")
 	return 0, errNotConected
+}
+
+func (b *Bot) Println(i ...interface{}) {
+	log.Println("BOT", i)
 }

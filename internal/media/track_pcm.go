@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/dmisol/sfu2/internal/media/opus"
 	"github.com/dmisol/sfu2/internal/videosource"
 	"github.com/google/uuid"
@@ -69,7 +70,7 @@ func (a *audioFifo) run() {
 	for {
 		i, err := a.rd.Read(rd)
 		if err != nil {
-			log.Println("synth ws rd", err)
+			log.Println("TrPcm synth ws rd", err)
 			atomic.StoreInt32(&a.closed, 1)
 			return
 		}
@@ -83,7 +84,7 @@ func (a *audioFifo) run() {
 	}
 }
 
-func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.Reader, ftar string) {
+func runPcmTrack(ctx context.Context, room defs.Room, stmid string, audio io.Reader, ftar string) {
 	tid := uuid.NewString()
 
 	ta, err := webrtc.NewTrackLocalStaticSample(
@@ -95,23 +96,24 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 			RTCPFeedback: nil,
 		}, tid, stmid)
 	if err != nil {
-		log.Println("local track creating", err)
+		log.Println("TrPcm local track creating", err)
 		return
 	}
-	m.room.AddSyntheticTrack(ta, nil)
-	defer m.room.RemoveTrack(ta)
+	room.AddSyntheticTrack(ta, nil)
+	defer room.RemoveTrack(ta)
 
 	var delayCntr int
 
 	var as *videosource.AnimatedSource
 	if len(ftar) > 0 {
+		log.Println("TrPcm strating video with flexatar", ftar)
 		as, err = videosource.NewAnimatedSource(ctx)
 		if err != nil {
-			log.Println("can't start video track", err)
+			log.Println("TrPcm can't start video track", err)
 			return
 		}
 
-		go m.RunH264Track(ctx, stmid, as)
+		go runH264Track(ctx, room, stmid, as)
 	}
 
 	enc := opus.NewOpusEncoder()
@@ -127,12 +129,12 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 		case <-tick.C:
 			buf, err := fifo.Read20ms()
 			if err != nil {
-				log.Println("fifo read err")
+				log.Println("TrPcm fifo read err")
 				return
 			}
 			if as != nil {
 				if err := as.WritePCM(buf); err != nil {
-					log.Println("anim write", err)
+					log.Println("TrPcm anim write", err)
 					return
 				}
 			}
@@ -140,7 +142,7 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 			// TODO: to import @16kHz, upscale here (x3), keeping last value from prev buffer
 			encoded, err := enc.Encode(buf)
 			if err != nil {
-				log.Println("audio encoding error", err)
+				log.Println("TrPcm audio encoding error", err)
 				return
 			}
 			if delayCntr > 0 {
@@ -152,11 +154,11 @@ func (m *RegularMedia) RunPcmTrack(ctx context.Context, stmid string, audio io.R
 			}
 
 			if err := ta.WriteSample(ms.Sample{Data: encoded, Duration: 20 * time.Millisecond}); err != nil {
-				log.Println("synthetic write error", err)
+				log.Println("TrPcm synthetic write error", err)
 				return
 			}
 		case <-ctx.Done():
-			log.Println("file track ctx")
+			log.Println("TrPcm file track ctx")
 			return
 		}
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"log"
@@ -9,7 +10,9 @@ import (
 	"path"
 	"text/template"
 
+	"github.com/dmisol/sfu2/internal/bot"
 	"github.com/dmisol/sfu2/internal/defs"
+	"github.com/dmisol/sfu2/internal/media"
 	"github.com/dmisol/sfu2/internal/rtc"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
@@ -18,6 +21,9 @@ import (
 var (
 	addr          = flag.String("addr", ":8080", "http service address")
 	indexTemplate = &template.Template{}
+
+	roomBot, roomGeneric *rtc.Room
+	conf                 *defs.Conf
 )
 
 type websocketMessage struct {
@@ -26,14 +32,16 @@ type websocketMessage struct {
 }
 
 func main() {
-	c, err := defs.ReadConf("conf.yaml")
+	var err error
+	conf, err = defs.ReadConf("conf.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	room := rtc.NewRoom(c)
+	roomGeneric = rtc.NewRoom("ChatRoom")
+	roomBot = rtc.NewRoom("BotRoom")
 	// websocket handler
-	http.HandleFunc("/ws", room.WebsocketHandler)
+	http.HandleFunc("/ws", roomHandler)
 
 	// index.html handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +52,7 @@ func main() {
 		http.ServeFile(w, r, path.Join("static", "view.html"))
 	})
 
-	if len(c.Hosts) == 0 {
+	if len(conf.Hosts) == 0 {
 		log.Fatal(http.ListenAndServe(*addr, nil))
 	} else {
 		m := &autocert.Manager{
@@ -70,4 +78,32 @@ func main() {
 		panic(http.Serve(lnTls, nil))
 
 	}
+}
+
+// Handle incoming websockets
+func roomHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), rtc.Timeout)
+	defer cancel()
+
+	runBot := r.URL.Query().Has("bot")
+	ftar := r.URL.Query().Get("ftar")
+
+	log.Println(ftar, runBot)
+	if runBot {
+		log.Println("user with animated bot, bot room")
+		aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
+		media := media.NewRegularMedia(roomBot, aiBot, ftar)
+		rtc.NewUser(ctx, roomBot, conf, media, w, r)
+		return
+	}
+
+	if len(ftar) > 0 {
+		log.Println("user with flexatar, generic room")
+		media := media.NewAnimatedHumanMedia(roomGeneric, ftar)
+		rtc.NewUser(ctx, roomGeneric, conf, media, w, r)
+		return
+	}
+	media := media.NewRegularMedia(roomGeneric, nil, "")
+	rtc.NewUser(ctx, roomGeneric, conf, media, w, r)
+
 }

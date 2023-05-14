@@ -5,27 +5,26 @@ import (
 	"log"
 	"math/rand"
 
+	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/google/uuid"
 	"github.com/pion/mediadevices"
 	"github.com/pion/mediadevices/pkg/codec/x264"
 	"github.com/pion/webrtc/v3"
 )
 
-func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediadevices.VideoSource) {
+func runH264Track(ctx context.Context, room defs.Room, stmid string, vs mediadevices.VideoSource) {
 
 	x264Params, err := x264.NewParams()
 	if err != nil {
-		log.Println("x264Params", err)
+		log.Println("TrH264 x264Params", err)
 	}
 	x264Params.Preset = x264.PresetMedium
 	x264Params.BitRate = 1_000_000 // 1mbps
 	x264Params.KeyFrameInterval = 30
-	// log.Println("x264Params")
 
 	codecSelector := mediadevices.NewCodecSelector(
 		mediadevices.WithVideoEncoders(&x264Params),
 	)
-	// log.Println("codecSelector")
 
 	vt := mediadevices.NewVideoTrack(vs, codecSelector)
 
@@ -34,7 +33,7 @@ func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediad
 		uuid.NewString(),
 		stmid)
 	if err != nil {
-		log.Println("video track failed", err)
+		log.Println("TrH264 video track failed", err)
 		return
 	}
 
@@ -42,31 +41,30 @@ func (m *RegularMedia) RunH264Track(ctx context.Context, stmid string, vs mediad
 		track: track,
 	}
 
-	// TODO: RTCPReader() ?
-	m.room.AddSyntheticTrack(track, &bs.NeedPli)
-	defer m.room.RemoveTrack(track)
+	room.AddSyntheticTrack(track, &bs.NeedPli)
+	defer room.RemoveTrack(track)
 
 	rr, err := vt.NewRTPReader(x264Params.RTPCodec().MimeType, rand.Uint32(), 1000)
 	if err != nil {
-		log.Println("NewRtpReader", err)
+		log.Println("TrH264 NewRtpReader", err)
 		return
 	}
 
 	go func() {
 		<-ctx.Done()
-		log.Println("animator ctopped ctx")
-		m.room.RemoveTrack(track)
+		log.Println("TrH264 animator ctopped ctx")
+		room.RemoveTrack(track)
 		rr.Close()
 	}()
 
 	for {
 		pkts, _, err := rr.Read()
 		if err != nil {
-			log.Println("mediadevices rd", err)
+			log.Println("TrH264 mediadevices rd", err)
 			return
 		}
 		if err = bs.Write(pkts); err != nil {
-			log.Println("h264 video done", err)
+			log.Println("TrH264 h264 video done", err)
 			return
 		}
 	}

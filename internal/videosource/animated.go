@@ -35,7 +35,7 @@ func NewAnimatedSource(ctx context.Context) (*AnimatedSource, error) {
 	}
 	var err error
 	if vs.conn, err = net.Dial("unix", addr); err != nil {
-		log.Println("dial", err)
+		vs.Println("dial", err)
 		return nil, err
 	}
 	go vs.run(ctx)
@@ -58,34 +58,34 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 	dir, b, err := vs.mockJson()
 	vs.dir = dir
 	if err != nil {
-		log.Println("mockJson failed: ", err)
+		vs.Println("mockJson failed: ", err)
 		return
 	}
 	os.MkdirAll(dir, 0777)
 	defer os.RemoveAll(dir)
 
 	if _, err = vs.conn.Write(b); err != nil {
-		log.Println("json sending", err)
+		vs.Println("json sending", err)
 		return
 	}
 	cntr := uint64(0)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("animated source killed (ctx)")
+			vs.Println("animated source killed (ctx)")
 			return
 		default:
 			b := make([]byte, 1024)
 			i, err := vs.conn.Read(b)
 			if err != nil {
-				log.Println("sock rd", err)
+				vs.Println("sock rd", err)
 				return
 			}
 
-			//log.Println("raw:", string(b))
+			vs.Println("raw:", string(b))
 			jsons := strings.Split(string(b[:i]), "\n")
 
-			//log.Println("jsons:", jsons)
+			//vs.Println("jsons:", jsons)
 			for _, js := range jsons {
 				if len(js) < 4 {
 					break
@@ -93,32 +93,32 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 
 				ap := &AminPacket{}
 				if err = json.Unmarshal([]byte(js), ap); err != nil {
-					log.Println("unmarshal socket msg", err)
+					vs.Println("unmarshal socket msg", err)
 					return
 				}
 
 				switch ap.Type {
 				case typeFile:
 					name := ap.Payload
-					//p.Println("name:", name)
+					vs.Println("name:", name)
 					if err = vs.procImage(name); err != nil {
-						log.Println("image decoding", name, err)
+						vs.Println("image decoding", name, err)
 						return
 					}
 					cntr++
 				case typeMsg:
 					if ap.Payload == animPayloadReady {
 						// trigger audio
-						log.Println("READY msg, start processing audio")
+						vs.Println("READY msg, start processing audio")
 						atomic.StoreInt32(&vs.canSendAudio, 1)
 						continue
 					} else {
 						// TODO: log separately
-						log.Println("ANIM ERR", ap.Payload)
+						vs.Println("ANIM ERR", ap.Payload)
 						continue
 					}
 				default:
-					log.Println("err unexpected type", js)
+					vs.Println("err unexpected type", js)
 				}
 
 			}
@@ -128,7 +128,7 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 }
 
 func (vs *AnimatedSource) Close() (err error) {
-	log.Println("AnimatedSource close")
+	vs.Println("AnimatedSource close")
 	return
 }
 
@@ -145,13 +145,13 @@ func (vs *AnimatedSource) Read() (image.Image, func(), error) {
 func (vs *AnimatedSource) procImage(name string) error {
 	r, err := os.Open(name)
 	if err != nil {
-		log.Println("jpeg read", err)
+		vs.Println("jpeg read", err)
 		return err
 	}
 
 	img, _, err := image.Decode(r)
 	if err != nil {
-		log.Println("jpeg decode", err)
+		vs.Println("jpeg decode", err)
 		return err
 	}
 
@@ -160,7 +160,7 @@ func (vs *AnimatedSource) procImage(name string) error {
 }
 func (vs *AnimatedSource) WritePCM(pcm []byte) error {
 	if len(vs.dir) == 0 {
-		log.Println("thread not strted yet: no dir")
+		vs.Println("thread not strted yet: no dir")
 		return nil
 	}
 	if atomic.LoadInt32(&vs.canSendAudio) == 0 {
@@ -168,8 +168,10 @@ func (vs *AnimatedSource) WritePCM(pcm []byte) error {
 	}
 	seq := atomic.AddInt64(&vs.index, 1)
 	name := fmt.Sprintf("%s/%08d.pcm", vs.dir, seq)
+	vs.Println("writing", name)
+
 	if err := os.WriteFile(name, pcm, 0666); err != nil {
-		log.Println("wr", err)
+		vs.Println("wr", err)
 		return err
 	}
 	w := bufio.NewWriter(vs.conn)
@@ -184,7 +186,7 @@ func (vs *AnimatedSource) WritePCM(pcm []byte) error {
 
 	b, err := json.Marshal(ap)
 	if err != nil {
-		log.Println("animpacket nmarshal", err)
+		vs.Println("animpacket nmarshal", err)
 		return err
 	}
 	if _, err = w.WriteString(string(b) + "\n"); err != nil {
@@ -232,16 +234,21 @@ type InitialJson struct {
 func (vs *AnimatedSource) mockJson() (string, []byte, error) {
 	f, err := ioutil.ReadFile(path.Join("testdata", "init.json"))
 	if err != nil {
-		log.Println("init.json file read", err)
+		vs.Println("init.json file read", err)
 		return "", nil, err
 	}
 	ij := &InitialJson{}
 	if err = json.Unmarshal(f, ij); err != nil {
-		log.Println("init.json file unmarshal", err)
+		vs.Println("init.json file unmarshal", err)
 		return "", nil, err
 	}
 	ij.Dir = path.Join(ramDisk, uuid.NewString())
+	vs.Println("new dir for animation", ij.Dir)
 	ij.Ftar = ftar
 	f, err = json.Marshal(ij)
 	return ij.Dir, f, err
+}
+
+func (vs *AnimatedSource) Println(i ...interface{}) {
+	log.Println("AnimatedSource", i)
 }

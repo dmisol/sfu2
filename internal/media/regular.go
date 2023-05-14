@@ -18,7 +18,7 @@ const (
 	audiochan = 1
 	opusRate  = 48000
 
-	runDummy = true
+	runDummy = false
 )
 
 // NewRegularMedia() optionally interfaces audio to bot and creates either a or a+v tracks from bot's responce
@@ -27,7 +27,7 @@ func NewRegularMedia(room defs.Room, bot io.ReadWriter, ftar string) defs.Media 
 		room: room,
 	}
 	if bot != nil {
-		log.Println("using bot")
+		m.Println("using bot")
 		m.xGress = bot
 		m.useBot = 1
 		m.ftar = ftar
@@ -74,27 +74,27 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 		if runDummy {
 			stmid := uuid.NewString()
 			// just for debugging
-			go m.RunPcmFileTrack(ctx, stmid)
+			go runPcmFileTrack(ctx, m.room, stmid)
 			vs, err := videosource.NewDummySource(path.Join("testdata", "img.jpeg"))
 			if err != nil {
-				log.Println("dummyVideoSource", err)
+				m.Println("dummyVideoSource", err)
 			} else {
-				go m.RunH264Track(ctx, stmid, vs)
+				go runH264Track(ctx, m.room, stmid, vs)
 			}
 		}
 
 		stmid := uuid.NewString()
-		go m.RunPcmTrack(ctx, stmid, m.xGress, m.ftar)
+		go runPcmTrack(ctx, m.room, stmid, m.xGress, m.ftar)
 	}
 
 	for {
 		p, _, err := t.ReadRTP()
 		if err != nil {
-			log.Println("packet read error", err)
+			m.Println("packet read error", err)
 			return
 		}
 		if len(p.Payload) == 0 {
-			log.Println("rx empty rtp, skipping")
+			m.Println("rx empty rtp, skipping")
 			continue
 		}
 
@@ -102,20 +102,24 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 			pcm16k, err := dec.Decode(p.Payload)
 
 			if err != nil {
-				log.Println("decoding", err)
+				m.Println("decoding", err)
 				atomic.StoreInt32(&m.useBot, 0)
 			} else {
 				_, err := m.xGress.Write(pcm16k)
 				if err != nil {
-					log.Println("bot write error")
+					m.Println("bot write error")
 					atomic.StoreInt32(&m.useBot, 0)
 				}
 			}
 		}
 
 		if err = trackLocal.WriteRTP(p); err != nil {
-			log.Println("track local write error", err)
+			m.Println("track local write error", err)
 			return
 		}
 	}
+}
+
+func (m *RegularMedia) Println(i ...interface{}) {
+	log.Println("RM", i)
 }

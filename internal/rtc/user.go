@@ -6,20 +6,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/dmisol/sfu2/internal/bot"
 	"github.com/dmisol/sfu2/internal/defs"
-	"github.com/dmisol/sfu2/internal/media"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
 
-func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	runBot := r.URL.Query().Has("bot")
-	ftar := r.URL.Query().Get("ftar")
-
+func NewUser(ctx context.Context, room defs.Room, conf *defs.Conf, media defs.Media, w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -99,21 +91,21 @@ func NewUser(room defs.Room, conf *defs.Conf, w http.ResponseWriter, r *http.Req
 			room.SignalPeerConnections(nil)
 		}
 	})
-
-	var mediaProc defs.Media
-	if runBot {
-		aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
-		mediaProc = media.NewRegularMedia(room, aiBot, ftar)
-	} else {
-		mediaProc = media.NewRegularMedia(room, nil, "")
-	}
-
+	/*
+		var mediaProc defs.Media
+		if runBot {
+			aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
+			mediaProc = media.NewRegularMedia(room, aiBot, ftar)
+		} else {
+			mediaProc = media.NewRegularMedia(room, nil, "just smth non-zero for now")
+		}
+	*/
 	peerConnection.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println(t.Codec(), t.ID(), t.StreamID())
 		if t.Kind() == webrtc.RTPCodecTypeAudio {
-			mediaProc.OnAudioTrack(ctx, t)
+			media.OnAudioTrack(ctx, t)
 		} else {
-			mediaProc.OnVideoTrack(ctx, t)
+			media.OnVideoTrack(ctx, t)
 		} // Create a track to fan out our incoming video to all peers
 	})
 

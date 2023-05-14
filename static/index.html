@@ -62,7 +62,7 @@
             } else {
                 uri = "ws:";
             }
-            uri += "//" + loc.host + "/ws?bot";
+            uri += "//" + loc.host + "/ws?bot=true&ftar=someFlexatar";
             let ws = new WebSocket(uri)
             pc.onicecandidate = e => {
                 if (!e.candidate) {

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,16 +13,16 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-const timeout = 2 * time.Hour
+const Timeout = 2 * time.Hour
 
 type websocketMessage struct {
 	Event string `json:"event"`
 	Data  string `json:"data"`
 }
 
-func NewRoom(c *defs.Conf) *Room {
-	r := &Room{
-		Conf:        c,
+func NewRoom(rid string) *Room {
+	room := &Room{
+		rid:         rid,
 		trackLocals: make(map[string]webrtc.TrackLocal),
 	}
 
@@ -33,14 +32,14 @@ func NewRoom(c *defs.Conf) *Room {
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/H264", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        126,
 	}, webrtc.RTPCodecTypeVideo); err != nil {
-		log.Println("reg videoo", err)
+		room.Println("reg videoo", err)
 		return nil
 	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
-		log.Println("reg audio", err)
+		room.Println("reg audio", err)
 		return nil
 	}
 	settingEngine := webrtc.SettingEngine{}
@@ -58,7 +57,7 @@ func NewRoom(c *defs.Conf) *Room {
 	})
 
 	if err != nil {
-		log.Println("listenTCP()", err)
+		room.Println("listenTCP()", err)
 		return nil
 	}
 
@@ -70,14 +69,14 @@ func NewRoom(c *defs.Conf) *Room {
 		Port: 3478,
 	})
 	if err != nil {
-		log.Println("listenUDP()", err)
+		room.Println("listenUDP()", err)
 		return nil
 	}
 
 	udpMux := webrtc.NewICEUDPMux(nil, udpListener)
 	settingEngine.SetICEUDPMux(udpMux)
 
-	r.api = webrtc.NewAPI(
+	room.api = webrtc.NewAPI(
 		webrtc.WithMediaEngine(&m),
 		webrtc.WithSettingEngine(settingEngine),
 	)
@@ -85,16 +84,16 @@ func NewRoom(c *defs.Conf) *Room {
 	// request a keyframe every 3 seconds
 	go func() {
 		for range time.NewTicker(time.Second * 3).C {
-			r.dispatchKeyFrame()
+			room.dispatchKeyFrame()
 		}
 	}()
 
-	return r
+	return room
 }
 
 type Room struct {
-	api  *webrtc.API
-	Conf *defs.Conf
+	api *webrtc.API
+	rid string
 
 	// lock for peerConnections and trackLocals
 	mu              sync.RWMutex
@@ -117,7 +116,7 @@ func (room *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	}
 
 	room.trackLocals[t.ID()] = trackLocal
-	log.Println("track added", t.Kind(), t.ID())
+	room.Println("track added", t.Kind(), t.ID())
 	return trackLocal
 }
 
@@ -130,7 +129,7 @@ func (room *Room) AddSyntheticTrack(trackLocal webrtc.TrackLocal, onPli *int32) 
 
 	id := trackLocal.ID()
 	room.trackLocals[id] = trackLocal
-	log.Println("synthetic", trackLocal.StreamID(), "added", trackLocal.Kind(), trackLocal.ID())
+	room.Println("synthetic", trackLocal.StreamID(), "added", trackLocal.Kind(), trackLocal.ID())
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
@@ -142,7 +141,7 @@ func (room *Room) RemoveTrack(t webrtc.TrackLocal) {
 	}()
 
 	delete(room.trackLocals, t.ID())
-	log.Println("track removed", t.ID(), t.Kind())
+	room.Println("track removed", t.ID(), t.Kind())
 }
 
 // SignalPeerConnections updates each PeerConnection so that it is getting all the expected media tracks
@@ -195,7 +194,7 @@ func (room *Room) SignalPeerConnections(onPli *int32) {
 					} else {
 						if onPli != nil {
 							go func() {
-								log.Println("staring pli processing")
+								room.Println("staring pli processing")
 								for {
 									pts, _, rtcpErr := sender.ReadRTCP()
 									if rtcpErr != nil {
@@ -203,7 +202,7 @@ func (room *Room) SignalPeerConnections(onPli *int32) {
 									}
 									for _, p := range pts {
 										if room.isPli(p) {
-											log.Println("got pli")
+											room.Println("got pli")
 											atomic.AddInt32(onPli, 1)
 										}
 									}
@@ -282,20 +281,14 @@ func (room *Room) AddPeerConnecrion(pcs defs.PeerConnectionState) {
 	room.peerConnections = append(room.peerConnections, pcs)
 }
 
-// Handle incoming websockets
-func (room *Room) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
-
-	runBot := r.URL.Query().Has("bot")
-	ftar := r.URL.Query().Get("ftar")
-	log.Println(ftar, runBot)
-
-	NewUser(room, room.Conf, w, r)
-}
-
 func (room *Room) isPli(p rtcp.Packet) bool {
 	switch p.(type) {
 	case *rtcp.PictureLossIndication:
 		return true
 	}
 	return false
+}
+
+func (room *Room) Println(i ...interface{}) {
+	log.Println(room.rid, i)
 }

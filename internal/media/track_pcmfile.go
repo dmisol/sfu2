@@ -7,18 +7,19 @@ import (
 	"path"
 	"time"
 
+	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/dmisol/sfu2/internal/media/opus"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	ms "github.com/pion/webrtc/v3/pkg/media"
 )
 
-func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string) {
+func runPcmFileTrack(ctx context.Context, room defs.Room, stmid string) {
 	tid := uuid.NewString()
 
 	b, err := os.ReadFile(path.Join("testdata", "48k.raw"))
 	if err != nil {
-		log.Println("file read", err)
+		log.Println("TrPcmFile file read", err)
 		return
 	}
 
@@ -35,13 +36,13 @@ func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string) {
 			RTCPFeedback: nil,
 		}, tid, stmid)
 	if err != nil {
-		log.Println("local track creating", err)
+		log.Println("TrPcmFile local track creating", err)
 		return
 	}
 
 	// 2. m.room.AddSyntheticTrack()
-	m.room.AddSyntheticTrack(t, nil)
-	defer m.room.RemoveTrack(t)
+	room.AddSyntheticTrack(t, nil)
+	defer room.RemoveTrack(t)
 
 	// 3. encoder
 	enc := opus.NewOpusEncoder()
@@ -61,16 +62,16 @@ func (m *RegularMedia) RunPcmFileTrack(ctx context.Context, stmid string) {
 			}
 			encoded, err := enc.Encode(x)
 			if err != nil {
-				log.Println("audio encoding error", err)
+				log.Println("TrPcmFile audio encoding error", err)
 				return
 			}
 
 			if err := t.WriteSample(ms.Sample{Data: encoded, Duration: 20 * time.Millisecond}); err != nil {
-				log.Println("synthetic write error", err)
+				log.Println("TrPcmFile synthetic write error", err)
 				return
 			}
 		case <-ctx.Done():
-			log.Println("file track ctx")
+			log.Println("TrPcmFile file track ctx")
 			return
 		}
 	}

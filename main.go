@@ -56,6 +56,11 @@ func main() {
 		http.ServeFile(w, r, path.Join("static", "index.html"))
 	})
 
+	// styles.css handler
+	http.HandleFunc("/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, path.Join("static", "styles.css"))
+	})
+
 	http.HandleFunc("/view", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, path.Join("static", "view.html"))
 	})

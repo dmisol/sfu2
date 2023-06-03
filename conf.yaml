@@ -1,3 +1,4 @@
-port: 8080
+port: 443
+hosts: [https://flexatar.com, flexatar.com]
 bot_url: ws://localhost:8081/ws
-
+redirect: https://flexatar.com:8443

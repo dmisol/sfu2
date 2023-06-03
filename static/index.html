@@ -3,17 +3,25 @@
 
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" type="text/css" href="styles.css" />
 </head>
 
 <body>
+
+    <h2 id="flexatar_demo_h2">Flexatar Demo</h2>
     <!--    <h3> Local Video </h3>
     <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
 
     <h3> Remote Video </h3>
     <div id="remoteVideos">
     -->
-    <div id="remoteVideos">
-        <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
+    <div id="remoteVideos" class="flexbox">
+        <div class="local_div">
+            <video id="localVideo" autoplay muted playsinline></video> <br />
+            <h3>Local Video</h3>
+        </div>
     </div> <br />
 </body>
 
@@ -35,9 +43,17 @@
                 el.srcObject = event.streams[0]
                 el.autoplay = true
                 el.controls = true
-                el.width = "160"
-                el.height = "120"
-                document.getElementById('remoteVideos').appendChild(el)
+                el.setAttribute('playsinline', '')
+
+                let divv = document.createElement('div')
+                divv.classList.add('remote_div')
+                let h3_text = document.createElement('h3')
+                h3_text.innerHTML = 'Remote Flexatar'
+
+                divv.appendChild(el)
+                divv.appendChild(h3_text)
+
+                document.getElementById('remoteVideos').appendChild(divv)
 
                 event.track.onmute = function (event) {
                     el.play()

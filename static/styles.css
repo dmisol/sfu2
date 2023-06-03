@@ -1,0 +1,88 @@
+body {
+    font-family: Roboto, arial, sans-serif;
+    
+}
+
+.flexbox {
+    display: flex;
+}
+
+body {
+    background: #fff9f0;
+}
+
+
+video {
+    height: auto;
+    max-height: 260px;
+    padding: 50px;
+    border-radius: 12%;
+}
+
+
+.local_div video {
+    background-color: antiquewhite;
+}
+
+.remote_div video {
+    background-color: #d7f9fa;
+}
+
+#localvideo_div video, #remotevideo_div video {
+    margin: 0 1.7em 1.7em 1.7em;
+    width: 100%;
+    max-width: 200px;
+}
+
+#flexatar_demo_h2 {
+    text-align: center;
+    margin: 2vh 0 5vh 0;
+}
+
+h3 {
+    text-align: center;
+}
+
+/* :not(body) {
+    border: 1px solid black;
+} */
+
+@media only screen and (min-width: 768px) {
+    /* For desktop: */
+
+    .flexbox {
+        flex-flow: row;
+        justify-content: space-evenly;
+
+    }
+
+    #localvideo_div, #remotevideo_div {
+        width: 40%;
+        margin: 3vh 5% 10% 5%;
+        text-align: center;
+        border-radius: 5%;
+    }
+
+    video {
+        width: 25vw;
+    }
+
+}
+
+@media only screen and (max-width: 768px) {
+/* For phones: */
+
+    .flexbox {
+        flex-flow: column;
+    }
+
+    video {
+        width: 40vw;
+    }
+
+    .local_div , .remote_div {
+        align-self: center;
+        align-items: center;
+    }
+
+}

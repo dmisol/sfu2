@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"path"
+	"syscall"
 	"text/template"
 
 	"github.com/dmisol/sfu2/internal/bot"
@@ -32,14 +33,21 @@ type websocketMessage struct {
 }
 
 func main() {
+	syscall.Umask(0)
+
 	var err error
 	conf, err = defs.ReadConf("conf.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	roomGeneric = rtc.NewRoom("ChatRoom")
-	roomBot = rtc.NewRoom("BotRoom")
+	api, err := rtc.NewApi()
+	if err != nil {
+		log.Println("sfu starting", err)
+		return
+	}
+	roomGeneric = rtc.NewRoom("ChatRoom", api)
+	roomBot = rtc.NewRoom("BotRoom", api)
 	// websocket handler
 	http.HandleFunc("/ws", roomHandler)
 
@@ -103,6 +111,7 @@ func roomHandler(w http.ResponseWriter, r *http.Request) {
 		rtc.NewUser(ctx, roomGeneric, conf, media, w, r)
 		return
 	}
+	log.Println("regular user (no flexatar), generic room")
 	media := media.NewRegularMedia(roomGeneric, nil, "")
 	rtc.NewUser(ctx, roomGeneric, conf, media, w, r)
 

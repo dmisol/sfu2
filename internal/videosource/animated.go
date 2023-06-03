@@ -27,48 +27,66 @@ const (
 	typeMsg  = "message"
 
 	animPayloadReady = "ready"
+	debug            = false
 )
 
 func NewAnimatedSource(ctx context.Context) (*AnimatedSource, error) {
+	id := uuid.NewString()
 	vs := &AnimatedSource{
 		imgs: make(chan image.Image, 50),
+		id:   id,
+		dir:  path.Join(ramDisk, id),
 	}
 	var err error
 	if vs.conn, err = net.Dial("unix", addr); err != nil {
 		vs.Println("dial", err)
 		return nil, err
 	}
+
+	if err = os.MkdirAll(vs.dir, 0777); err != nil {
+		vs.Println("dir creating", err)
+		return nil, err
+	}
+	vs.Println("dir created", vs.dir, err)
+
 	go vs.run(ctx)
 	return vs, nil
 }
 
 type AnimatedSource struct {
-	conn         net.Conn
-	dir          string
-	Delay        time.Duration
-	t            time.Time
+	conn  net.Conn
+	dir   string
+	Delay time.Duration
+
 	imgs         chan image.Image
 	canSendAudio int32
 	index        int64
+
+	id string
+
+	sec         int32
+	fps         int32
+	pkts, bytes int32
 }
 
 func (vs *AnimatedSource) run(ctx context.Context) {
+	defer vs.Println("DONE")
 	defer vs.conn.Close()
+	if !debug {
+		defer os.RemoveAll(vs.dir)
+	}
 
-	dir, b, err := vs.mockJson()
-	vs.dir = dir
+	b, err := vs.mockJson()
 	if err != nil {
 		vs.Println("mockJson failed: ", err)
 		return
 	}
-	os.MkdirAll(dir, 0777)
-	defer os.RemoveAll(dir)
 
 	if _, err = vs.conn.Write(b); err != nil {
 		vs.Println("json sending", err)
 		return
 	}
-	cntr := uint64(0)
+	vs.Println("starting")
 	for {
 		select {
 		case <-ctx.Done():
@@ -100,12 +118,15 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 				switch ap.Type {
 				case typeFile:
 					name := ap.Payload
-					vs.Println("name:", name)
+					// vs.Println("name:", name)
 					if err = vs.procImage(name); err != nil {
 						vs.Println("image decoding", name, err)
 						return
 					}
-					cntr++
+					atomic.AddInt32(&vs.fps, 1)
+					if !debug {
+						os.Remove(name)
+					}
 				case typeMsg:
 					if ap.Payload == animPayloadReady {
 						// trigger audio
@@ -133,8 +154,7 @@ func (vs *AnimatedSource) Close() (err error) {
 }
 
 func (vs *AnimatedSource) ID() (id string) {
-	id = uuid.NewString()
-	return
+	return vs.id
 }
 
 func (vs *AnimatedSource) Read() (image.Image, func(), error) {
@@ -159,6 +179,21 @@ func (vs *AnimatedSource) procImage(name string) error {
 	return nil
 }
 func (vs *AnimatedSource) WritePCM(pcm []byte) error {
+
+	if debug {
+		atomic.AddInt32(&vs.pkts, 1)
+		atomic.AddInt32(&vs.bytes, int32(len(pcm)))
+		sec := int32(time.Now().Second())
+		if sec != atomic.LoadInt32(&vs.sec) {
+			vs.Println("audio", atomic.LoadInt32(&vs.pkts), atomic.LoadInt32(&vs.bytes),
+				"fps", atomic.LoadInt32(&vs.fps))
+			atomic.StoreInt32(&vs.fps, 0)
+			atomic.StoreInt32(&vs.pkts, 0)
+			atomic.StoreInt32(&vs.bytes, 0)
+			atomic.StoreInt32(&vs.sec, sec)
+		}
+	}
+
 	if len(vs.dir) == 0 {
 		vs.Println("thread not strted yet: no dir")
 		return nil
@@ -168,7 +203,7 @@ func (vs *AnimatedSource) WritePCM(pcm []byte) error {
 	}
 	seq := atomic.AddInt64(&vs.index, 1)
 	name := fmt.Sprintf("%s/%08d.pcm", vs.dir, seq)
-	vs.Println("writing", name)
+	// vs.Println("writing", name)
 
 	if err := os.WriteFile(name, pcm, 0666); err != nil {
 		vs.Println("wr", err)
@@ -231,24 +266,23 @@ type InitialJson struct {
 	//HairSeg bool `json:"hair_seg,omitempty"`
 }
 
-func (vs *AnimatedSource) mockJson() (string, []byte, error) {
+func (vs *AnimatedSource) mockJson() ([]byte, error) {
 	f, err := ioutil.ReadFile(path.Join("testdata", "init.json"))
 	if err != nil {
 		vs.Println("init.json file read", err)
-		return "", nil, err
+		return nil, err
 	}
 	ij := &InitialJson{}
 	if err = json.Unmarshal(f, ij); err != nil {
 		vs.Println("init.json file unmarshal", err)
-		return "", nil, err
+		return nil, err
 	}
-	ij.Dir = path.Join(ramDisk, uuid.NewString())
-	vs.Println("new dir for animation", ij.Dir)
-	ij.Ftar = ftar
+	ij.Dir = vs.dir
+	ij.Ftar = []string{ftar}
 	f, err = json.Marshal(ij)
-	return ij.Dir, f, err
+	return f, err
 }
 
 func (vs *AnimatedSource) Println(i ...interface{}) {
-	log.Println("AnimatedSource", i)
+	log.Println("AnimSrc", vs.id, i)
 }

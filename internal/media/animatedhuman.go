@@ -10,6 +10,8 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+const two_video_tracks = true
+
 func NewAnimatedHumanMedia(room defs.Room, ftar string) defs.Media {
 	m := &AnimatedHumanMedia{
 		room: room,
@@ -26,7 +28,24 @@ type AnimatedHumanMedia struct {
 }
 
 func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemote) {
-	m.Println("video tack from user not needed")
+	if two_video_tracks {
+		trackLocal := m.room.AddTrack(t)
+		defer m.room.RemoveTrack(trackLocal)
+
+		buf := make([]byte, 1500)
+		for {
+			i, _, err := t.Read(buf)
+			if err != nil {
+				return
+			}
+
+			if _, err = trackLocal.Write(buf[:i]); err != nil {
+				return
+			}
+		}
+	} else {
+		m.Println("video tack from user not used")
+	}
 }
 
 func (m *AnimatedHumanMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) {
@@ -76,5 +95,5 @@ func (m *AnimatedHumanMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRe
 }
 
 func (m *AnimatedHumanMedia) Println(i ...interface{}) {
-	log.Println("AHM", i)
+	log.Println("AnimHmn", i)
 }

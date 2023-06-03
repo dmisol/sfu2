@@ -28,10 +28,19 @@ func runH264Track(ctx context.Context, room defs.Room, stmid string, vs mediadev
 
 	vt := mediadevices.NewVideoTrack(vs, codecSelector)
 
+	// the proper way would be to preserve stream id;
+	// but in this case will be unable to send original video in parallel
+
+	stmid2use := stmid
+	if two_video_tracks {
+		stmid2use = uuid.NewString()
+	}
+
 	track, err := webrtc.NewTrackLocalStaticRTP(
 		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
-		uuid.NewString(),
-		stmid)
+		vs.ID(),
+		stmid2use) //stmid
+
 	if err != nil {
 		log.Println("TrH264 video track failed", err)
 		return
@@ -52,7 +61,7 @@ func runH264Track(ctx context.Context, room defs.Room, stmid string, vs mediadev
 
 	go func() {
 		<-ctx.Done()
-		log.Println("TrH264 animator ctopped ctx")
+		log.Println("TrH264 animator stopped ctx")
 		room.RemoveTrack(track)
 		rr.Close()
 	}()

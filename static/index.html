@@ -6,23 +6,27 @@
 </head>
 
 <body>
-    <h3> Local Video </h3>
+    <!--    <h3> Local Video </h3>
     <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
 
     <h3> Remote Video </h3>
-    <div id="remoteVideos"></div> <br />
+    <div id="remoteVideos">
+    -->
+    <div id="remoteVideos">
+        <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
+    </div> <br />
 </body>
 
 <script>
     navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        })
+        video: true,
+        audio: true
+    })
         .then(stream => {
             let pc = new RTCPeerConnection()
-            pc.ontrack = function(event) {
+            pc.ontrack = function (event) {
                 console.log("add" + event.track.kind + "-->" + event.track.id)
-                    // TODO: mark somehow audio-only streams if occur 
+                // TODO: mark somehow audio-only streams if occur 
                 if (event.track.kind === 'audio') {
                     return
                 }
@@ -35,7 +39,7 @@
                 el.height = "120"
                 document.getElementById('remoteVideos').appendChild(el)
 
-                event.track.onmute = function(event) {
+                event.track.onmute = function (event) {
                     el.play()
                 }
 
@@ -47,7 +51,7 @@
                     }
                 }
             }
-            pc.onremovetrack = function(event) {
+            pc.onremovetrack = function (event) {
                 console.log("rem" + event.track.kind + "-->" + event.track.id)
             }
 
@@ -62,7 +66,8 @@
             } else {
                 uri = "ws:";
             }
-            uri += "//" + loc.host + "/ws?bot=true&ftar=someFlexatar";
+            //uri += "//" + loc.host + "/ws?bot=true&ftar=someFlexatar";
+            uri += "//" + loc.host + "/ws?ftar=someFlexatar";
             let ws = new WebSocket(uri)
             pc.onicecandidate = e => {
                 if (!e.candidate) {
@@ -75,11 +80,11 @@
                 }))
             }
 
-            ws.onclose = function(evt) {
+            ws.onclose = function (evt) {
                 window.alert("Websocket has closed")
             }
 
-            ws.onmessage = function(evt) {
+            ws.onmessage = function (evt) {
                 let msg = JSON.parse(evt.data)
                 if (!msg) {
                     return console.log('failed to parse msg')
@@ -117,7 +122,7 @@
                 }
             }
 
-            ws.onerror = function(evt) {
+            ws.onerror = function (evt) {
                 console.log("ERROR: " + evt.data)
             }
         }).catch(window.alert)

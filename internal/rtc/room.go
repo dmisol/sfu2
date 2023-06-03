@@ -3,7 +3,6 @@ package rtc
 import (
 	"encoding/json"
 	"log"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,66 +19,12 @@ type websocketMessage struct {
 	Data  string `json:"data"`
 }
 
-func NewRoom(rid string) *Room {
+func NewRoom(rid string, api *webrtc.API) *Room {
 	room := &Room{
 		rid:         rid,
 		trackLocals: make(map[string]webrtc.TrackLocal),
 	}
-
-	m := webrtc.MediaEngine{}
-
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/H264", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
-		PayloadType:        126,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
-		room.Println("reg videoo", err)
-		return nil
-	}
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
-		PayloadType:        111,
-	}, webrtc.RTPCodecTypeAudio); err != nil {
-		room.Println("reg audio", err)
-		return nil
-	}
-	settingEngine := webrtc.SettingEngine{}
-
-	// Enable support only for TCP ICE candidates.
-	settingEngine.SetNetworkTypes([]webrtc.NetworkType{
-		webrtc.NetworkTypeTCP4,
-		//		webrtc.NetworkTypeUDP4,
-		//webrtc.NetworkTypeTCP6,
-	})
-
-	tcpListener, err := net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   net.IP{0, 0, 0, 0},
-		Port: 3478,
-	})
-
-	if err != nil {
-		room.Println("listenTCP()", err)
-		return nil
-	}
-
-	tcpMux := webrtc.NewICETCPMux(nil, tcpListener, 8)
-	settingEngine.SetICETCPMux(tcpMux)
-
-	udpListener, err := net.ListenUDP("udp", &net.UDPAddr{
-		IP:   net.IP{0, 0, 0, 0},
-		Port: 3478,
-	})
-	if err != nil {
-		room.Println("listenUDP()", err)
-		return nil
-	}
-
-	udpMux := webrtc.NewICEUDPMux(nil, udpListener)
-	settingEngine.SetICEUDPMux(udpMux)
-
-	room.api = webrtc.NewAPI(
-		webrtc.WithMediaEngine(&m),
-		webrtc.WithSettingEngine(settingEngine),
-	)
+	room.api = api
 
 	// request a keyframe every 3 seconds
 	go func() {
@@ -178,6 +123,7 @@ func (room *Room) SignalPeerConnections(onPli *int32) {
 			}
 
 			// Don't receive videos we are sending, make sure we don't have loopback
+			// TODO: filter out synthetic own videos here, as an option - assing original video track id to a synthetic one
 			for _, receiver := range room.peerConnections[i].PeerConnection.GetReceivers() {
 				if receiver.Track() == nil {
 					continue

@@ -13,7 +13,7 @@ type Room interface {
 	SignalPeerConnections(*int32)
 
 	AddTrack(*webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP         // inherited - creates track from remote
-	AddSyntheticTrack(trackLocal webrtc.TrackLocal, pilNeeded *int32) // just appends track local
+	AddSyntheticTrack(trackLocal webrtc.TrackLocal, pliNeeded *int32) // just appends track local
 	RemoveTrack(webrtc.TrackLocal)
 }
 

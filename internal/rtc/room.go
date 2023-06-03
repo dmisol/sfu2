@@ -235,6 +235,10 @@ func (room *Room) isPli(p rtcp.Packet) bool {
 	return false
 }
 
+func (room *Room) GetAPI() *webrtc.API {
+	return room.api
+}
+
 func (room *Room) Println(i ...interface{}) {
 	log.Println(room.rid, i)
 }

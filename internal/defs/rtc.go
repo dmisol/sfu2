@@ -11,6 +11,7 @@ import (
 type Room interface {
 	AddPeerConnecrion(PeerConnectionState)
 	SignalPeerConnections(*int32)
+	GetAPI() *webrtc.API
 
 	AddTrack(*webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP         // inherited - creates track from remote
 	AddSyntheticTrack(trackLocal webrtc.TrackLocal, pliNeeded *int32) // just appends track local

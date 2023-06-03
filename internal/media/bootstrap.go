@@ -17,12 +17,12 @@ type Bootstrap struct {
 
 func (b *Bootstrap) Write(pkts []*rtp.Packet) error {
 	if atomic.LoadInt32(&b.NeedPli) > 0 {
-		log.Println("bootstrap wanted")
+		b.Println("bootstrap wanted")
 	}
 
 	if b.hasBootstrap(pkts) {
 		b.bs = pkts
-		log.Println("bootstrap updated")
+		b.Println("bootstrap updated")
 		err := b.sendFrame(pkts)
 		atomic.StoreInt32(&b.NeedPli, 0)
 		return err
@@ -41,7 +41,7 @@ func (b *Bootstrap) Write(pkts []*rtp.Packet) error {
 
 func (b *Bootstrap) hasBootstrap(pkts []*rtp.Packet) bool {
 	if !pkts[len(pkts)-1].Marker {
-		log.Println("no marker at the end")
+		b.Println("no marker at the end")
 		return false
 	}
 	for _, p := range pkts {
@@ -56,7 +56,7 @@ func (b *Bootstrap) sendFrame(pkts []*rtp.Packet) error {
 	for _, p := range pkts {
 		p.SequenceNumber = b.seq
 		if err := b.track.WriteRTP(p); err != nil {
-			log.Println("writing to track", err)
+			b.Println("writing to track", err)
 			return err
 		}
 		b.seq++
@@ -106,7 +106,7 @@ func (b *Bootstrap) isH264Keyframe(payload []byte) bool {
 				return true
 			} else if n >= 24 {
 				// is this legal?
-				log.Println("Non-simple NALU within a STAP")
+				b.Println("Non-simple NALU within a STAP")
 			}
 			i += int(length)
 		}
@@ -126,4 +126,8 @@ func (b *Bootstrap) isH264Keyframe(payload []byte) bool {
 		return payload[1]&0x1F == 7
 	}
 	return false
+}
+
+func (b *Bootstrap) Println(i ...interface{}) {
+	log.Println("BS", b.track.StreamID(), i)
 }

@@ -32,19 +32,11 @@ func NewUser(ctx context.Context, room defs.Room, conf *defs.Conf, media defs.Me
 	}()
 
 	// Create new PeerConnection
-	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{}) // webrtc. //room.api.
+	peerConnection, err := room.GetAPI().NewPeerConnection(webrtc.Configuration{}) // webrtc. //room.api.
 	if err != nil {
 		log.Print(err)
 		return
 	}
-
-	/* TODO:
-	sndrs := peerConnection.GetSenders()
-	for k, v := range sndrs {
-		v.ReadRTCP()
-		v.
-	}
-	*/
 	defer peerConnection.Close() //nolint
 
 	// Accept one audio and one video track incoming
@@ -91,15 +83,7 @@ func NewUser(ctx context.Context, room defs.Room, conf *defs.Conf, media defs.Me
 			room.SignalPeerConnections(nil)
 		}
 	})
-	/*
-		var mediaProc defs.Media
-		if runBot {
-			aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
-			mediaProc = media.NewRegularMedia(room, aiBot, ftar)
-		} else {
-			mediaProc = media.NewRegularMedia(room, nil, "just smth non-zero for now")
-		}
-	*/
+
 	peerConnection.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println(t.Codec(), t.ID(), t.StreamID())
 		if t.Kind() == webrtc.RTPCodecTypeAudio {

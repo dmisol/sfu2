@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"path"
@@ -83,7 +84,7 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 			}
 		}
 
-		stmid := uuid.NewString()
+		stmid := fmt.Sprintf("bot-%s", uuid.NewString())
 		go runPcmTrack(ctx, m.room, stmid, m.xGress, m.ftar)
 	}
 

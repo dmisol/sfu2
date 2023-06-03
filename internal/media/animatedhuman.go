@@ -2,11 +2,14 @@ package media
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/dmisol/sfu2/internal/media/opus"
 	"github.com/dmisol/sfu2/internal/videosource"
+	"github.com/google/uuid"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -29,20 +32,65 @@ type AnimatedHumanMedia struct {
 
 func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemote) {
 	if two_video_tracks {
-		trackLocal := m.room.AddTrack(t)
-		defer m.room.RemoveTrack(trackLocal)
+		// create stream with prefix "cam-" derived from t.StreamID()
+		// explisively collect bootstrap and add video track as synthetic track
 
-		buf := make([]byte, 1500)
-		for {
-			i, _, err := t.Read(buf)
-			if err != nil {
-				return
-			}
-
-			if _, err = trackLocal.Write(buf[:i]); err != nil {
-				return
-			}
+		stmid := fmt.Sprintf("cam-%s", t.StreamID())
+		track, err := webrtc.NewTrackLocalStaticRTP(
+			webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
+			uuid.NewString(),
+			stmid)
+		if err != nil {
+			m.Println("preserving original video track failed", err)
+			return
 		}
+
+		bs := &Bootstrap{
+			track: track,
+		}
+
+		m.room.AddSyntheticTrack(track, &bs.NeedPli)
+		defer m.room.RemoveTrack(track)
+		var frame []*rtp.Packet
+		for {
+			p, _, err := t.ReadRTP()
+			if err != nil {
+				m.Println("cam read", err)
+				return
+			}
+
+			// collect keyframe to respond pli
+			frame = append(frame, p)
+
+			if p.Marker {
+				m.Println("frame", len(frame))
+				err = bs.Write(frame)
+				if err != nil {
+					m.Println("cam write", err)
+					return
+				}
+				frame = frame[:0]
+			} /*else {
+				m.Println("still collecting", len(frame))
+			}*/
+
+		}
+		/*
+			trackLocal := m.room.AddTrack(t)
+			defer m.room.RemoveTrack(trackLocal)
+
+			buf := make([]byte, 1500)
+			for {
+				i, _, err := t.Read(buf)
+				if err != nil {
+					return
+				}
+
+				if _, err = trackLocal.Write(buf[:i]); err != nil {
+					return
+				}
+			} */
+
 	} else {
 		m.Println("video tack from user not used")
 	}

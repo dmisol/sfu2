@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -284,5 +283,5 @@ func (vs *AnimatedSource) mockJson() ([]byte, error) {
 }
 
 func (vs *AnimatedSource) Println(i ...interface{}) {
-	log.Println("AnimSrc", vs.id, i)
+	//log.Println("AnimSrc", vs.id, i)
 }

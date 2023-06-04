@@ -38,7 +38,7 @@ func runH264Track(ctx context.Context, room defs.Room, stmid string, vs mediadev
 
 	track, err := webrtc.NewTrackLocalStaticRTP(
 		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
-		vs.ID(),
+		"ftar-"+vs.ID(),
 		stmid2use) //stmid
 
 	if err != nil {

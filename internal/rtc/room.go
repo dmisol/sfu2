@@ -28,7 +28,7 @@ func NewRoom(rid string, api *webrtc.API) *Room {
 
 	// request a keyframe every 3 seconds
 	go func() {
-		for range time.NewTicker(time.Second * 3).C {
+		for range time.NewTicker(time.Second * 1).C {
 			room.dispatchKeyFrame()
 		}
 	}()

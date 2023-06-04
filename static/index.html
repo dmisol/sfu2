@@ -9,20 +9,9 @@
 </head>
 
 <body>
-
-    <h2 id="flexatar_demo_h2">Flexatar Demo</h2>
-    <!--    <h3> Local Video </h3>
-    <video id="localVideo" width="160" height="120" autoplay muted></video> <br />
-
-    <h3> Remote Video </h3>
-    <div id="remoteVideos">
-    -->
-    <div id="remoteVideos" class="flexbox">
-        <div class="local_div">
-            <video id="localVideo" autoplay muted playsinline></video> <br />
-            <h3>Local Video</h3>
-        </div>
-    </div> <br />
+    <video id="localVideo" width="160" height="120" autoplay muted style="display: none;"></video>
+    <div id="ftVideos" class="local_div" style="display: flex"></div>
+    <div id="userVideos" class="remote_div" style="display: flex"></div>
 </body>
 
 <script>
@@ -33,7 +22,7 @@
         .then(stream => {
             let pc = new RTCPeerConnection()
             pc.ontrack = function (event) {
-                console.log("add" + event.track.kind + "-->" + event.track.id)
+                console.log("stream " + stream.id + " add " + event.track.kind + "-->" + event.track.id)
                 // TODO: mark somehow audio-only streams if occur 
                 if (event.track.kind === 'audio') {
                     return
@@ -45,15 +34,8 @@
                 el.controls = true
                 el.setAttribute('playsinline', '')
 
-                let divv = document.createElement('div')
-                divv.classList.add('remote_div')
-                let h3_text = document.createElement('h3')
-                h3_text.innerHTML = 'Remote Flexatar'
-
-                divv.appendChild(el)
-                divv.appendChild(h3_text)
-
-                document.getElementById('remoteVideos').appendChild(divv)
+                if (event.track.id.startsWith("cam-")) document.getElementById('userVideos').appendChild(el)
+                else document.getElementById('ftVideos').appendChild(el)
 
                 event.track.onmute = function (event) {
                     el.play()

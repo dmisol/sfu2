@@ -38,7 +38,7 @@ func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemo
 		stmid := fmt.Sprintf("cam-%s", t.StreamID())
 		track, err := webrtc.NewTrackLocalStaticRTP(
 			webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264},
-			uuid.NewString(),
+			"cam-"+uuid.NewString(),
 			stmid)
 		if err != nil {
 			m.Println("preserving original video track failed", err)

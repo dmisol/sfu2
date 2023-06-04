@@ -9,15 +9,54 @@
 </head>
 
 <body>
-    <button id="start" onclick="window.legacy()"> Start Demo (realtime animating with flexatar) </button>
+    <div id="start">
+        <div>
+            <input type="radio" name="ftar" value="random" id="random" checked>
+            <label for="random">random</label>
+        </div>
+
+        <div>
+            <input type="radio" name="ftar" value="ds" id="ds">
+            <label for="ds">DS</label>
+        </div>
+        <div>
+            <input type="radio" name="ftar" value="la1" id="la1">
+            <label for="la">LA1</label>
+        </div>
+        <div>
+            <input type="radio" name="ftar" value="no1" id="no1">
+            <label for="no">NO1</label>
+        </div>
+        <div>
+            <input type="radio" name="ftar" value="la2" id="la2">
+            <label for="la">LA2</label>
+        </div>
+        <div>
+            <input type="radio" name="ftar" value="no2" id="no2">
+            <label for="no">NO2</label>
+        </div>
+
+        <button onclick="window.legacy()"> Start Demo (realtime animating with flexatar) </button>
+    </div>
     <video id="localVideo" width="160" height="120" autoplay muted style="display: none;"></video>
     <div id="ftVideos" class="local_div" style="display: flex"></div>
     <div id="userVideos" class="remote_div" style="display: flex"></div>
 </body>
 
 <script>
+    var ftar = "random";
+    const radioButtons = document.querySelectorAll('input[name="ftar"]');
+
     function legacy() {
         document.getElementById("start").style.display = 'none';
+
+        for (const radioButton of radioButtons) {
+            if (radioButton.checked) {
+                ftar = radioButton.value;
+                break;
+            }
+        }
+
         main();
     }
     function main() {
@@ -72,8 +111,7 @@
                 } else {
                     uri = "ws:";
                 }
-                //uri += "//" + loc.host + "/ws?bot=true&ftar=someFlexatar";
-                uri += "//" + loc.host + "/ws?ftar=someFlexatar";
+                uri += "//" + loc.host + "/ws?ftar=" + ftar; // &bot=true
                 let ws = new WebSocket(uri)
                 pc.onicecandidate = e => {
                     if (!e.candidate) {

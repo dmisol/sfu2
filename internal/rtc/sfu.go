@@ -7,23 +7,27 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewApi() (*webrtc.API, error) {
+func NewApi(a bool, v bool, port int) (*webrtc.API, error) {
 	m := webrtc.MediaEngine{}
+	if a {
+		if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
+			PayloadType:        111,
+		}, webrtc.RTPCodecTypeAudio); err != nil {
+			log.Println("reg audio", err)
+			return nil, err
+		}
+	}
+	if v {
+		if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/H264", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
+			PayloadType:        126,
+		}, webrtc.RTPCodecTypeVideo); err != nil {
+			log.Println("reg videoo", err)
+			return nil, err
+		}
+	}
 
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/H264", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
-		PayloadType:        126,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
-		log.Println("reg videoo", err)
-		return nil, err
-	}
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
-		PayloadType:        111,
-	}, webrtc.RTPCodecTypeAudio); err != nil {
-		log.Println("reg audio", err)
-		return nil, err
-	}
 	settingEngine := webrtc.SettingEngine{}
 
 	// Enable support only for TCP ICE candidates.
@@ -35,7 +39,7 @@ func NewApi() (*webrtc.API, error) {
 
 	tcpListener, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.IP{0, 0, 0, 0},
-		Port: 3478,
+		Port: port,
 	})
 
 	if err != nil {
@@ -48,7 +52,7 @@ func NewApi() (*webrtc.API, error) {
 
 	udpListener, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:   net.IP{0, 0, 0, 0},
-		Port: 3478,
+		Port: port,
 	})
 	if err != nil {
 		log.Println("listenUDP()", err)

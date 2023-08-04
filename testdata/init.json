@@ -1,21 +1,42 @@
 {
     "dir": "/run/tmp",
-    "ftar": ["/opt/flexapix/flexatar/static3/flx/flx_opnLeo_Emo_09_venik.p"],
-
-    "width": 640,
-    "height": 480,
-    "fps": 24,
-
-    "head_positon": [
-        [0, 0, 0.7, 1],
-        [0, 0, 0.7, 1]
+    "ftar": [
+        "/opt/flexapix/flexatar/static3/flx/flx_opnLeo_Emo_09_venik.p"
     ],
-    "tattoo": [0, 5],
+    "width": 480,
+    "height": 640,
+    "fps": 24,
+    "head_positon": [
+        [
+            0,
+            0,
+            0.7,
+            1
+        ],
+        [
+            0,
+            0,
+            0.7,
+            1
+        ]
+    ],
+    "tattoo": [
+        0,
+        5
+    ],
     "video_bkg": 0,
-    "glasses": [false, false],
+    "glasses": [
+        false,
+        false
+    ],
     "merge_type": 0,
-    "color_filter": [0, 0],
-    "pattern_index": [0, 3],
-
+    "color_filter": [
+        0,
+        0
+    ],
+    "pattern_index": [
+        0,
+        3
+    ],
     "out_encoding": "jpg"
 }

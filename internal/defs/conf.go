@@ -7,10 +7,10 @@ import (
 )
 
 type Conf struct {
-	Port     string   `yaml:"port"`
-	Hosts    []string `yaml:"hosts,omitempty"`
-	Redirect string   `yaml:"redirect,omitempty"`
-	BotUrl   string   `yaml:"bot_url,omitempty"`
+	Port   string   `yaml:"port"`
+	Hosts  []string `yaml:"hosts,omitempty"`
+	Proxy  string   `yaml:"proxy,omitempty"`
+	BotUrl string   `yaml:"bot_url,omitempty"`
 }
 
 func ReadConf(name string) (c *Conf, err error) {

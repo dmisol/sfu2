@@ -9,59 +9,115 @@
 </head>
 
 <body>
-    <div id="start">
-        <div>
-            <input type="radio" name="ftar" value="random" id="random" checked>
-            <label for="random">random</label>
-        </div>
-
-        <div>
-            <input type="radio" name="ftar" value="ds" id="ds">
-            <label for="ds">DS</label>
-        </div>
-        <div>
-            <input type="radio" name="ftar" value="la1" id="la1">
-            <label for="la">LA1</label>
-        </div>
-        <div>
-            <input type="radio" name="ftar" value="no1" id="no1">
-            <label for="no">NO1</label>
-        </div>
-        <div>
-            <input type="radio" name="ftar" value="la2" id="la2">
-            <label for="la">LA2</label>
-        </div>
-        <div>
-            <input type="radio" name="ftar" value="no2" id="no2">
-            <label for="no">NO2</label>
-        </div>
-
-        <button onclick="window.legacy()"> Start Demo (realtime animating with flexatar) </button>
+    <div id="select_ftar">
+        <H1>Please select one of our recent flexatars to be used for animating.</H1>
+        <br>
+        <H2>To create your own flexatar please use our IOS TestFlight. The result will appear here almost immediately.
+        </H2>
+        <br>
     </div>
+
+    <div id="change_browser" style="display: none;">
+        <H1>Please change your browser. For the demo, we are expecting either Chrome or Safari</H1>
+    </div>
+
+    <div id="mode_select" style="display: none;">
+        <div> <b>
+                Now you can either
+                <p>
+                    <button type="button" onclick="window.main()">Participate in WebRTC conference with other
+                        humans</button>
+
+                </p>
+                <div>
+                    or <button type="button" disabled onclick="window.Bot()">Talk to a ChatGPT-powered bot </button>
+                </div>
+            </b>
+        </div>
+
+        <i>
+            <p>
+                The animating and rendering procedures are light-weighted and can be performed in browser.
+            </p>
+            <p>
+                Once upon a time we are planning to implement it with WebGL.
+            </p>
+        </i>
+        <div> <i>
+                Sources of this demo are here:
+                <a href="https://github.com/dmisol/sfu2">github.com/dmisol/sfu2</a>
+            </i>
+        </div>
+    </div>
+
     <video id="localVideo" width="160" height="120" autoplay muted style="display: none;"></video>
-    <div id="ftVideos" class="local_div" style="display: flex"></div>
-    <div id="userVideos" class="remote_div" style="display: flex"></div>
+    <div id="upVideos" style="display: flex"></div>
+    <div id="dwnVideos" style="display: flex"></div>
 </body>
 
 <script>
     var ftar = "random";
-    const radioButtons = document.querySelectorAll('input[name="ftar"]');
+    const up = document.getElementById("upVideos");
+    const dwn = document.getElementById("dwnVideos");
+    let cntr = 0;
+    let bot = 0;
+    const modeSelect = document.getElementById("mode_select");
 
-    function legacy() {
-        document.getElementById("start").style.display = 'none';
+    select_ftar();
+    function check_browser() {
+        let userAgent = navigator.userAgent;
 
-        for (const radioButton of radioButtons) {
-            if (radioButton.checked) {
-                ftar = radioButton.value;
-                break;
-            }
+        console.log(userAgent);
+        if (userAgent.match(/chrome|chromium|crios/i)) {
+            return 1;
         }
+        if (userAgent.match(/safari/i)) {
+            return 1;
+        }
+        document.getElementById('select_ftar').style.display = 'none';
+        document.getElementById('change_browser').style.display = 'flex';
+    }
 
+    function select_ftar() {
+        if (!check_browser()) return;
+
+        const p = document.getElementById("select_ftar");
+        fetch('icon/list', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(response =>
+                response.forEach((key) => displayIcon(p, key))
+            )
+    }
+
+    function displayIcon(p, key) {
+        let img = document.createElement('img');
+        img.src = "icon/" + key;
+        img.onerror = function handleError() {
+            console.log('Image could not be loaded' + key);
+            img.style.display = 'none';
+        };
+        img.onclick = function continueWithFlexatar() {
+            ftar = key;
+            p.style.display = 'none';
+            modeSelect.style.display = 'block';
+        };
+        p.appendChild(img);
+    }
+
+    function Bot() {
+        bot = 1;
         main();
     }
     function main() {
+        modeSelect.style.display = 'none';
+
         navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: false,
             audio: true
         })
             .then(stream => {
@@ -80,9 +136,17 @@
                     el.autoplay = true
                     el.controls = true
                     el.setAttribute('playsinline', '')
+                    el.setAttribute('class', "bg_div" + cntr)
+                    cntr++;
+                    if (cntr >= 10) cntr = 0;
 
-                    if (event.track.id.startsWith("cam-")) document.getElementById('userVideos').appendChild(el)
-                    else document.getElementById('ftVideos').appendChild(el)
+                    if (event.track.kind === 'audio') {
+                        el.style.display = 'none';
+                        document.getElementById("start").appendChild(el)
+                    } else {
+                        if (up.childNodes.length > dwn.childNodes.length) dwn.appendChild(el)
+                        else up.appendChild(el)
+                    }
 
                     event.track.onmute = function (event) {
                         el.play()
@@ -111,7 +175,8 @@
                 } else {
                     uri = "ws:";
                 }
-                uri += "//" + loc.host + "/ws?ftar=" + ftar; // &bot=true
+                uri += "//" + loc.host + "/ws?ftar=" + ftar;
+                if (bot) uri += "&bot=true";
                 let ws = new WebSocket(uri)
                 pc.onicecandidate = e => {
                     if (!e.candidate) {

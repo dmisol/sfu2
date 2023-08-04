@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/google/uuid"
 )
 
@@ -299,22 +298,9 @@ func (vs *AnimatedSource) mockJson() ([]byte, error) {
 		return nil, err
 	}
 	ij.Dir = vs.dir
-	ij.Ftar = vs.mockFtar() //[]string{ftar}
+	ij.Ftar = vs.ftar //[]string{ftar}
 	f, err = json.Marshal(ij)
 	return f, err
-}
-
-func (vs *AnimatedSource) mockFtar() []string {
-	x, ok := defs.DefFtarMap[vs.ftar]
-	if ok {
-		vs.Println("requested", x)
-		return []string{x}
-	}
-	y := int(atomic.AddInt32(&defs.LastFtar, 1))
-	y = y % len(defs.DefFtarArray)
-	x = defs.DefFtarArray[y]
-	vs.Println("selected", y, x)
-	return []string{x}
 }
 
 func (vs *AnimatedSource) Println(i ...interface{}) {

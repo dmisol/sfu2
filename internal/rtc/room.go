@@ -148,7 +148,7 @@ func (room *Room) SignalPeerConnections(onPli *int32) {
 									}
 									for _, p := range pts {
 										if room.isPli(p) {
-											// room.Println("got pli")
+											//room.Println("got pli")
 											atomic.AddInt32(onPli, 1)
 										}
 									}

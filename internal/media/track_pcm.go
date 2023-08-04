@@ -107,7 +107,7 @@ func runPcmTrack(ctx context.Context, room defs.Room, stmid string, audio io.Rea
 	var as *videosource.AnimatedSource
 	if len(ftar) > 0 {
 		log.Println("TrPcm strating video with flexatar", ftar)
-		as, err = videosource.NewAnimatedSource(ctx)
+		as, err = videosource.NewAnimatedSource(ctx, ftar)
 		if err != nil {
 			log.Println("TrPcm can't start video track", err)
 			return

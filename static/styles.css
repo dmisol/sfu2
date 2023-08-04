@@ -1,6 +1,6 @@
 body {
     font-family: Roboto, arial, sans-serif;
-    
+
 }
 
 .flexbox {
@@ -28,7 +28,48 @@ video {
     background-color: #d7f9fa;
 }
 
-#localvideo_div video, #remotevideo_div video {
+.bg_div0 {
+    background-color: #d7f9fa;
+}
+
+.bg_div1 {
+    background-color: #d7faeb;
+}
+
+.bg_div2 {
+    background-color: #d7fae5;
+}
+
+.bg_div3 {
+    background-color: #e5fad7;
+}
+
+.bg_div4 {
+    background-color: #f3fad7;
+}
+
+.bg_div5 {
+    background-color: #faf2d7;
+}
+
+.bg_div6 {
+    background-color: #fae7d7;
+}
+
+.bg_div7 {
+    background-color: #faded7;
+}
+
+.bg_div8 {
+    background-color: #fad7e2;
+}
+
+.bg_div9 {
+    background-color: #fad7f1;
+}
+
+#localvideo_div video,
+#remotevideo_div video {
     margin: 0 1.7em 1.7em 1.7em;
     width: 100%;
     max-width: 200px;
@@ -56,7 +97,8 @@ h3 {
 
     }
 
-    #localvideo_div, #remotevideo_div {
+    #localvideo_div,
+    #remotevideo_div {
         width: 40%;
         margin: 3vh 5% 10% 5%;
         text-align: center;
@@ -70,7 +112,7 @@ h3 {
 }
 
 @media only screen and (max-width: 768px) {
-/* For phones: */
+    /* For phones: */
 
     .flexbox {
         flex-flow: column;
@@ -80,7 +122,8 @@ h3 {
         width: 40vw;
     }
 
-    .local_div , .remote_div {
+    .local_div,
+    .remote_div {
         align-self: center;
         align-items: center;
     }

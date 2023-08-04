@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <button id="start" onclick="main()">Start</button>
+    <video id="localVideo" width="160" height="120" autoplay muted style="display: none;"></video>
+    <div id="upVideos" style="display: flex"></div>
+    <div id="dwnVideos" style="display: flex"></div>
+    <div id="audios"></div>
+</body>
+
+<script>
+    var ftar = "random";
+    const up = document.getElementById("upVideos");
+    const dwn = document.getElementById("dwnVideos");
+    let cntr = 0;
+
+    function main() {
+        document.getElementById("start").style.display = 'none';
+        /*
+        navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: true
+        })
+            .then(stream => {
+                */
+        let pc = new RTCPeerConnection()
+        pc.ontrack = function (event) {
+            console.log(" add " + event.track.kind + "-->" + event.track.id)
+            console.log(event)
+            // TODO: mark somehow audio-only streams if occur 
+            /*
+            if (event.track.kind === 'audio') {
+                return
+            }
+            */
+
+            let el = document.createElement(event.track.kind)
+            el.srcObject = event.streams[0]
+            el.autoplay = true
+            el.controls = true
+            el.setAttribute('playsinline', '')
+            el.setAttribute('class', "bg_div" + cntr)
+            cntr++;
+            if (cntr >= 10) cntr = 0;
+
+            if (event.track.kind === 'audio') {
+                el.style.display = 'none';
+                document.getElementById("audios").appendChild(el)
+            } else {
+                if (up.childNodes.length > dwn.childNodes.length) dwn.appendChild(el)
+                else up.appendChild(el)
+            }
+
+            event.track.onmute = function (event) {
+                el.play()
+            }
+
+            event.streams[0].onremovetrack = ({
+                track
+            }) => {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el)
+                }
+            }
+        }
+        pc.onremovetrack = function (event) {
+            console.log("rem" + event.track.kind + "-->" + event.track.id)
+        }
+
+        //document.getElementById('localVideo').srcObject = stream
+        //stream.getTracks().forEach(track => pc.addTrack(track, stream))
+
+        var loc = window.location,
+            uri;
+
+        if (loc.protocol === "https:") {
+            uri = "wss:";
+        } else {
+            uri = "ws:";
+        }
+        uri += "//" + loc.host + "/ws?deb=true"
+        let ws = new WebSocket(uri)
+        pc.onicecandidate = e => {
+            if (!e.candidate) {
+                return
+            }
+
+            ws.send(JSON.stringify({
+                event: 'candidate',
+                data: JSON.stringify(e.candidate)
+            }))
+        }
+
+        ws.onclose = function (evt) {
+            window.alert("Websocket has closed")
+        }
+
+        ws.onmessage = function (evt) {
+            let msg = JSON.parse(evt.data)
+            if (!msg) {
+                return console.log('failed to parse msg')
+            }
+
+            switch (msg.event) {
+                case 'offer':
+                    let offer = JSON.parse(msg.data)
+                    if (!offer) {
+                        return console.log('failed to parse answer')
+                    }
+                    //console.log("got offer:")
+                    //console.log(offer.sdp)
+
+                    pc.setRemoteDescription(offer)
+                    pc.createAnswer().then(answer => {
+                        pc.setLocalDescription(answer)
+                        ws.send(JSON.stringify({
+                            event: 'answer',
+                            data: JSON.stringify(answer)
+                        }))
+
+                        //console.log(" sent answer:")
+                        //console.log(answer)
+                    })
+                    return
+
+                case 'candidate':
+                    let candidate = JSON.parse(msg.data)
+                    if (!candidate) {
+                        return console.log('failed to parse candidate')
+                    }
+
+                    pc.addIceCandidate(candidate)
+            }
+        }
+
+        ws.onerror = function (evt) {
+            console.log("ERROR: " + evt.data)
+        }
+        //}).catch(window.alert)
+    }
+</script>
+
+</html>

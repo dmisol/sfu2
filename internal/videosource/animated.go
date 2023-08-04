@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -20,7 +21,6 @@ import (
 const (
 	addr    = "/tmp/sfu.sock"
 	ramDisk = "/tmp"
-	ftar    = "/opt/flexapix/flexatar/static3/server_saves/flexatars/dmisol1.p"
 
 	typeFile = "file"
 	typeMsg  = "message"
@@ -29,9 +29,12 @@ const (
 	debug            = false
 )
 
-func NewAnimatedSource(ctx context.Context) (*AnimatedSource, error) {
+var ErrStopped = fmt.Errorf("animmated source stopped")
+
+func NewAnimatedSource(ctx context.Context, ftar string) (*AnimatedSource, error) {
 	id := uuid.NewString()
 	vs := &AnimatedSource{
+		ftar: ftar,
 		imgs: make(chan image.Image, 50),
 		id:   id,
 		dir:  path.Join(ramDisk, id),
@@ -53,6 +56,9 @@ func NewAnimatedSource(ctx context.Context) (*AnimatedSource, error) {
 }
 
 type AnimatedSource struct {
+	ftar    string // TODO: make array for morphing
+	stopped int32
+
 	conn  net.Conn
 	dir   string
 	Delay time.Duration
@@ -70,6 +76,8 @@ type AnimatedSource struct {
 
 func (vs *AnimatedSource) run(ctx context.Context) {
 	defer vs.Println("DONE")
+	defer atomic.AddInt32(&vs.stopped, 1)
+
 	defer vs.conn.Close()
 	if !debug {
 		defer os.RemoveAll(vs.dir)
@@ -99,10 +107,10 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 				return
 			}
 
-			vs.Println("raw:", string(b))
+			//vs.Println("raw:", string(b))
 			jsons := strings.Split(string(b[:i]), "\n")
 
-			//vs.Println("jsons:", jsons)
+			// vs.Println("jsons:", jsons)
 			for _, js := range jsons {
 				if len(js) < 4 {
 					break
@@ -134,7 +142,7 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 						continue
 					} else {
 						// TODO: log separately
-						vs.Println("ANIM ERR", ap.Payload)
+						// vs.Println("ANIM ERR", ap.Payload)
 						continue
 					}
 				default:
@@ -148,6 +156,8 @@ func (vs *AnimatedSource) run(ctx context.Context) {
 }
 
 func (vs *AnimatedSource) Close() (err error) {
+	defer atomic.AddInt32(&vs.stopped, 1)
+
 	vs.Println("AnimatedSource close")
 	return
 }
@@ -157,11 +167,19 @@ func (vs *AnimatedSource) ID() (id string) {
 }
 
 func (vs *AnimatedSource) Read() (image.Image, func(), error) {
+	if atomic.LoadInt32(&vs.stopped) > 0 {
+		return nil, func() {}, ErrStopped
+	}
+
 	img := <-vs.imgs
 	return img, func() {}, nil
 }
 
 func (vs *AnimatedSource) procImage(name string) error {
+	if atomic.LoadInt32(&vs.stopped) > 0 {
+		return ErrStopped
+	}
+
 	r, err := os.Open(name)
 	if err != nil {
 		vs.Println("jpeg read", err)
@@ -178,6 +196,9 @@ func (vs *AnimatedSource) procImage(name string) error {
 	return nil
 }
 func (vs *AnimatedSource) WritePCM(pcm []byte) error {
+	if atomic.LoadInt32(&vs.stopped) > 0 {
+		return ErrStopped
+	}
 
 	if debug {
 		atomic.AddInt32(&vs.pkts, 1)
@@ -277,11 +298,11 @@ func (vs *AnimatedSource) mockJson() ([]byte, error) {
 		return nil, err
 	}
 	ij.Dir = vs.dir
-	ij.Ftar = []string{ftar}
+	ij.Ftar = vs.ftar //[]string{ftar}
 	f, err = json.Marshal(ij)
 	return f, err
 }
 
 func (vs *AnimatedSource) Println(i ...interface{}) {
-	//log.Println("AnimSrc", vs.id, i)
+	log.Println("AnimSrc", vs.id, i)
 }

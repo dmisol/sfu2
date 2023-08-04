@@ -17,12 +17,12 @@ type Bootstrap struct {
 
 func (b *Bootstrap) Write(pkts []*rtp.Packet) error {
 	if atomic.LoadInt32(&b.NeedPli) > 0 {
-		b.Println("bootstrap wanted")
+		// b.Println("bootstrap wanted")
 	}
 
 	if b.hasBootstrap(pkts) {
 		b.bs = pkts
-		b.Println("bootstrap updated")
+		// b.Println("bootstrap updated")
 		err := b.sendFrame(pkts)
 		atomic.StoreInt32(&b.NeedPli, 0)
 		return err

@@ -1,0 +1,14 @@
+
+File consists of blocks 
+| Int64 lengthHeader | Payload | ...
+
+| Block0 | Block1 | ...
+
+Block0 is description of Block1 as json, Block2 is description of Block3 and so on.
+
+To read version and preview image:
+
+1. Skip Block0
+2. Read Block1 as json. Field "version" gives version.
+3. Skip Block2
+4. Read Block3. It is data of preview image jpg.

@@ -15,19 +15,21 @@ import (
 
 const two_video_tracks = true
 
-func NewAnimatedHumanMedia(room defs.Room, ftar string) defs.Media {
+func NewAnimatedHumanMedia(room defs.Room, ftar string, cancel context.CancelFunc) defs.Media {
 	m := &AnimatedHumanMedia{
-		room: room,
-		ftar: ftar,
-		pcm:  make(chan []byte, 250), // 5 sec
+		cancel: cancel,
+		room:   room,
+		ftar:   ftar,
+		pcm:    make(chan []byte, 250), // 5 sec
 	}
 	return m
 }
 
 type AnimatedHumanMedia struct {
-	room defs.Room
-	ftar string
-	pcm  chan []byte
+	cancel context.CancelFunc
+	room   defs.Room
+	ftar   string
+	pcm    chan []byte
 }
 
 func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemote) {
@@ -63,7 +65,7 @@ func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemo
 			frame = append(frame, p)
 
 			if p.Marker {
-				m.Println("frame", len(frame))
+				// m.Println("frame", len(frame))
 				err = bs.Write(frame)
 				if err != nil {
 					m.Println("cam write", err)
@@ -97,6 +99,10 @@ func (m *AnimatedHumanMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemo
 }
 
 func (m *AnimatedHumanMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) {
+	defer func() {
+		m.Println("onAudioTrack done")
+		m.cancel()
+	}()
 	trackLocal := m.room.AddTrack(t)
 	defer m.room.RemoveTrack(trackLocal)
 
@@ -105,9 +111,10 @@ func (m *AnimatedHumanMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRe
 
 	stmid := t.StreamID()
 	m.Println("strating video with flexatar", m.ftar)
-	as, err := videosource.NewAnimatedSource(ctx)
+	as, err := videosource.NewAnimatedSource(ctx, m.ftar)
 	if err != nil {
 		m.Println("can't start video track", err)
+		m.Println("canceling ctx for serving user")
 		return
 	}
 	go runH264Track(ctx, m.room, stmid, as)

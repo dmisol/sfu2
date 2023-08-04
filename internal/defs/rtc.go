@@ -8,6 +8,8 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+const DebugVideo = false
+
 type Room interface {
 	AddPeerConnecrion(PeerConnectionState)
 	SignalPeerConnections(*int32)

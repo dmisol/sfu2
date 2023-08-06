@@ -255,5 +255,4 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(ct, resp.Header.Get(ct))
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
-
 }

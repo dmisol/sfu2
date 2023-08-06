@@ -27,6 +27,7 @@ import (
 const (
 	useDebugRoom = true
 	unixProxy    = "/tmp/processing.sock"
+	ct           = "Content-Type"
 )
 
 var (
@@ -193,19 +194,18 @@ func roomHandler(w http.ResponseWriter, r *http.Request) {
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	m := r.Method
-
-	url := "/1"
+	log.Println("serving /data", m)
+	url := "http://tmp.1"
 
 	values := r.URL.Query()
 	cntr := 0
 	for k, v := range values {
 		if cntr == 0 {
-			url += fmt.Sprintf("?%s=%s", k, v)
+			url += fmt.Sprintf("?%s=%s", k, v[0])
 		} else {
-			url += fmt.Sprintf("&%s=%s", k, v)
+			url += fmt.Sprintf("&%s=%s", k, v[0])
 		}
 		cntr++
-		fmt.Println(k, " => ", v)
 	}
 
 	cl := &http.Client{}
@@ -224,11 +224,17 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req, err := http.NewRequest(m, url, r.Body)
+
 	if err != nil {
 		log.Println("req error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
+	}
+
+	hdr := r.Header.Get(ct)
+	if len(hdr) > 0 {
+		req.Header.Set(ct, hdr)
 	}
 
 	resp, err := cl.Do(req)
@@ -238,6 +244,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("body error", err)
@@ -245,6 +252,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+	w.Header().Set(ct, resp.Header.Get(ct))
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 

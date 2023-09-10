@@ -11,6 +11,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -28,32 +30,51 @@ type jsonTag struct {
 	Index int    `json:"index"`
 }
 
-func NewFtar(name string) (*Ftar, error) {
+func NewFtar(name string, group string) (*Ftar, error) {
 	f := &Ftar{
-		File: name,
-		Date: time.Now(),
+		File:  name,
+		Date:  time.Now(),
+		Group: group,
 	}
 	f.Key()
 	if err := f.fetchPng(); err != nil {
 		return nil, err
 	}
+
+	// store it for now
+	// todo: remove?
+	fin, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer fin.Close()
+	fout, err := os.Create(path.Join(FtarsIn, defaultGroup, path.Base(name)))
+	if err != nil {
+		return nil, err
+	}
+	defer fout.Close()
+	if _, err = io.Copy(fout, fin); err != nil {
+		return nil, err
+	}
+
 	return f, nil
 }
 
 type Ftar struct {
-	File string
-	Id   string // self name from Icon
-	Icon string
+	File  string
+	Id    string
+	Icon  string
+	Group string
 
 	Fixed bool
 	Date  time.Time
 }
 
 func (f *Ftar) Key() {
-	s := path.Base(f.File)
-	id := strings.Split(s, ".")[0]
+	//s := path.Base(f.File)
+	//id := strings.Split(s, ".")[0]
 
-	f.Id = id
+	f.Id = uuid.NewString() //id
 	return
 }
 

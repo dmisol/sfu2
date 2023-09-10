@@ -10,5 +10,6 @@ sfu:
 		--network="host" \
 		-e AUDIT_LEVEL=1 \
 		-v /tmp:/tmp \
+		-v /ftars:/ftars \
 		sfu2 &
 

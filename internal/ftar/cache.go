@@ -13,9 +13,11 @@ const (
 	MaxFtars = 18
 	IconPath = "/tmp/icons"
 	FixedOut = "/tmp/ftars.fixed"
+
+	defaultGroup = "human"
 )
 
-var FixedIn = "testdata/ftars"
+var FtarsIn = "/ftars"
 
 func NewCache() *Cache {
 	c := &Cache{
@@ -24,7 +26,7 @@ func NewCache() *Cache {
 	os.MkdirAll(IconPath, 0755)
 	os.MkdirAll(FixedOut, 0755)
 
-	de, err := os.ReadDir(FixedIn)
+	de, err := os.ReadDir(FtarsIn)
 	if err != nil {
 		log.Println("Error reading fixed ftars", err)
 		return c
@@ -32,16 +34,31 @@ func NewCache() *Cache {
 
 	log.Println("fixed qty", len(de))
 	for _, e := range de {
+		log.Println("reading subdir", e.Name())
+		c.readSubdir(FtarsIn, e.Name())
+	}
+
+	return c
+}
+func (c *Cache) readSubdir(fullPath string, group string) {
+	de, err := os.ReadDir(path.Join(fullPath, group))
+	if err != nil {
+		return
+	}
+
+	log.Println("fixed qty", len(de))
+	for _, e := range de {
 		log.Println(e.Name())
-		f := &Ftar{File: path.Join(FixedIn, e.Name())}
+		f := &Ftar{
+			File:  path.Join(fullPath, group, e.Name()),
+			Group: group,
+		}
 		f.Key()
 		if err := f.CopyAndFetchPng(); err != nil {
 			log.Println("fixed loading", err)
 		}
 		c.ftars[f.Id] = f
 	}
-
-	return c
 }
 
 type Cache struct {
@@ -50,7 +67,8 @@ type Cache struct {
 }
 
 func (c *Cache) AddFtar(name string) error {
-	f, err := NewFtar(name)
+
+	f, err := NewFtar(name, defaultGroup)
 	if err != nil {
 		return err
 	}
@@ -64,13 +82,15 @@ func (c *Cache) AddFtar(name string) error {
 }
 
 // GetList returns the actual list of flexatars (keys == images) that can be used for animating
-func (c *Cache) GetList() ([]byte, error) {
+func (c *Cache) GetList(g string) ([]byte, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	var l []string
-	for k, _ := range c.ftars {
-		l = append(l, k)
+	for k, f := range c.ftars {
+		if (len(g) == 0) || (g == f.Group) {
+			l = append(l, k)
+		}
 	}
 	return json.Marshal(l)
 }

@@ -15,6 +15,12 @@
         <H2>To create your own flexatar please use our IOS TestFlight. The result will appear here almost immediately.
         </H2>
         <br>
+        <div id="human">
+            <H1>Human Flexatars</H1>
+        </div>
+        <div id="3d">
+            <H1>3d Models</H1>
+        </div>
     </div>
 
     <div id="change_browser" style="display: none;">
@@ -80,9 +86,13 @@
 
     function select_ftar() {
         if (!check_browser()) return;
+        select_ftar_group("3d");
+        select_ftar_group("human");
+    }
 
-        const p = document.getElementById("select_ftar");
-        fetch('icon/list', {
+    function select_ftar_group(id) {
+        const p = document.getElementById(id);
+        fetch('icon/list?group=' + id, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -92,6 +102,7 @@
             .then(response =>
                 response.forEach((key) => displayIcon(p, key))
             )
+
     }
 
     function displayIcon(p, key) {

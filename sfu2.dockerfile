@@ -30,10 +30,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 VOLUME /tmp
+VOLUME /ftars
 
 COPY --from=build /app/main ./main
 COPY static ./static
-COPY testdata ./testdata
 COPY conf.yaml ./conf.yaml
 
 ENTRYPOINT ["/bin/sh", "-c", "./main >> /tmp/sfu2.txt 2>&1"]

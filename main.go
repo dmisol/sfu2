@@ -83,8 +83,18 @@ func main() {
 	c.Post("/data", proxyHandler)
 
 	// trigger to involve newly-created ftars
-	c.Get("/ftar", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: agree how to pass the name
+	c.Post("/ftar", func(w http.ResponseWriter, r *http.Request) {
+		fn, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Println("/ftar POST body", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err = storage.AddFtar(string(fn)); err != nil {
+			log.Println("/ftar add", string(fn), err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	})
 
 	// commands and files
@@ -102,7 +112,8 @@ func main() {
 	})
 
 	c.Get("/icon/list", func(w http.ResponseWriter, r *http.Request) {
-		b, err := storage.GetList()
+		group := r.URL.Query().Get("group")
+		b, err := storage.GetList(group)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

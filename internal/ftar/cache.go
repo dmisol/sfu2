@@ -54,7 +54,7 @@ func (c *Cache) readSubdir(fullPath string, group string) {
 			Group: group,
 		}
 		f.Key()
-		if err := f.CopyAndFetchPng(); err != nil {
+		if err := f.CopyAndFetchPng(FixedOut); err != nil {
 			log.Println("fixed loading", err)
 		}
 		c.ftars[f.Id] = f
@@ -74,9 +74,11 @@ func (c *Cache) AddFtar(name string) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if len(c.ftars) > MaxFtars {
-		c.clear()
-	}
+	/*
+		if len(c.ftars) > MaxFtars {
+			c.clear()
+		}
+	*/
 	c.ftars[f.Id] = f
 	return nil
 }

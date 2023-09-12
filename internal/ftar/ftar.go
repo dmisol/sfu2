@@ -3,7 +3,6 @@ package ftar
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -37,27 +36,8 @@ func NewFtar(name string, group string) (*Ftar, error) {
 		Group: group,
 	}
 	f.Key()
-	if err := f.fetchPng(); err != nil {
-		return nil, err
-	}
-
-	// store it for now
-	// todo: remove?
-	fin, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer fin.Close()
-	fout, err := os.Create(path.Join(FtarsIn, defaultGroup, path.Base(name)))
-	if err != nil {
-		return nil, err
-	}
-	defer fout.Close()
-	if _, err = io.Copy(fout, fin); err != nil {
-		return nil, err
-	}
-
-	return f, nil
+	err := f.CopyAndFetchPng(path.Join(FtarsIn, group))
+	return f, err
 }
 
 type Ftar struct {
@@ -75,15 +55,9 @@ func (f *Ftar) Key() {
 	//id := strings.Split(s, ".")[0]
 
 	f.Id = uuid.NewString() //id
-	return
 }
 
-func (f *Ftar) fetchPng() error {
-	// TODO:
-	return fmt.Errorf("failed to fetch icon")
-}
-
-func (f *Ftar) CopyAndFetchPng() error {
+func (f *Ftar) CopyAndFetchPng(destDir string) error {
 	in, err := os.Open(f.File)
 	if err != nil {
 		return err
@@ -91,7 +65,7 @@ func (f *Ftar) CopyAndFetchPng() error {
 	defer in.Close()
 
 	name := path.Base(f.File)
-	full := path.Join(FixedOut, name)
+	full := path.Join(destDir, name)
 	out, err := os.Create(full)
 	if err != nil {
 		return err

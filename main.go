@@ -110,6 +110,15 @@ func main() {
 		}
 		http.ServeFile(w, r, fmt.Sprintf("static/%s.html", fn))
 	})
+	c.Get("/file/*", func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		log.Println("/file:, fn=", p)
+		if strings.Contains(p, "..") {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		http.ServeFile(w, r, path.Join("static", p))
+	})
 
 	c.Get("/icon/list", func(w http.ResponseWriter, r *http.Request) {
 		group := r.URL.Query().Get("group")

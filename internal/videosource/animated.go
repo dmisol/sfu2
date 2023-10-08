@@ -298,7 +298,7 @@ func (vs *AnimatedSource) mockJson() ([]byte, error) {
 		return nil, err
 	}
 	ij.Dir = vs.dir
-	ij.Ftar = vs.ftar //[]string{ftar}
+	ij.Ftar = []string{vs.ftar} //vs.ftar //[]string{ftar}
 	f, err = json.Marshal(ij)
 	return f, err
 }

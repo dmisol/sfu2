@@ -1,0 +1,3 @@
+[submodule "flexatar_webgl"]
+	path = flexatar_webgl
+	url = git@github.com:dmisol/flexatar_webgl.git

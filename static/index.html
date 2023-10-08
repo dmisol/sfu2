@@ -10,7 +10,9 @@
 
 <body>
     <div id="select_ftar">
-        <H1>Please select one of our recent flexatars to be used for animating.</H1>
+        <H1>You can try our <a href="/webgl">WebGL rendering demo</a> or choose one of our recent flexatars below to be
+            used
+            for WebRTC animating.</H1>
         <br>
         <H2>To create your own flexatar please use our IOS TestFlight. The result will appear here almost immediately.
         </H2>
@@ -36,7 +38,7 @@
 
                 </p>
                 <div>
-                    or <button type="button" disabled onclick="window.Bot()">Talk to a ChatGPT-powered bot </button>
+                    or <button type="button" onclick="window.Bot()">Talk to a ChatGPT-powered bot </button>
                 </div>
             </b>
         </div>
@@ -56,6 +58,14 @@
         </div>
     </div>
 
+    <div id="note" style="display: none;">
+        <i>You'll see your flexatar video slightly delayed, not matching your voice.
+            <br>
+            That's fine: your visavi will see it "talking" syncchonously with your speech.
+        </i>
+    </div>
+
+
     <video id="localVideo" width="160" height="120" autoplay muted style="display: none;"></video>
     <div id="upVideos" style="display: flex"></div>
     <div id="dwnVideos" style="display: flex"></div>
@@ -68,6 +78,7 @@
     let cntr = 0;
     let bot = 0;
     const modeSelect = document.getElementById("mode_select");
+    const note = document.getElementById("note");
 
     select_ftar();
     function check_browser() {
@@ -114,7 +125,7 @@
         };
         img.onclick = function continueWithFlexatar() {
             ftar = key;
-            p.style.display = 'none';
+            document.getElementById("select_ftar").style.display = 'none';
             modeSelect.style.display = 'block';
         };
         p.appendChild(img);
@@ -126,6 +137,10 @@
     }
     function main() {
         modeSelect.style.display = 'none';
+        note.style.display = 'block';
+        setTimeout(() => {
+            note.style.display = 'none';
+        }, "3000");
 
         navigator.mediaDevices.getUserMedia({
             video: false,

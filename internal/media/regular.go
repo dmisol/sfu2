@@ -23,9 +23,10 @@ const (
 )
 
 // NewRegularMedia() optionally interfaces audio to bot and creates either a or a+v tracks from bot's responce
-func NewRegularMedia(room defs.Room, bot io.ReadWriter, ftar string) defs.Media {
+func NewRegularMedia(room defs.Room, bot io.ReadWriter, ftar string, cancel context.CancelFunc) defs.Media {
 	m := &RegularMedia{
-		room: room,
+		cancel: cancel,
+		room:   room,
 	}
 	if bot != nil {
 		m.Println("using bot")
@@ -37,6 +38,7 @@ func NewRegularMedia(room defs.Room, bot io.ReadWriter, ftar string) defs.Media 
 }
 
 type RegularMedia struct {
+	cancel context.CancelFunc
 	room   defs.Room
 	useBot int32
 
@@ -62,6 +64,11 @@ func (m *RegularMedia) OnVideoTrack(_ context.Context, t *webrtc.TrackRemote) {
 }
 
 func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) {
+	defer func() {
+		m.Println("onAudioTrack done")
+		m.cancel()
+	}()
+
 	trackLocal := m.room.AddTrack(t)
 	defer m.room.RemoveTrack(trackLocal)
 
@@ -110,6 +117,7 @@ func (m *RegularMedia) OnAudioTrack(ctx context.Context, t *webrtc.TrackRemote) 
 				if err != nil {
 					m.Println("bot write error")
 					atomic.StoreInt32(&m.useBot, 0)
+					return
 				}
 			}
 		}

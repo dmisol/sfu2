@@ -10,13 +10,17 @@
 
 <body>
     <div id="select_ftar">
-        <H1>You can try our <a href="/webgl">WebGL rendering demo</a> or choose one of our recent flexatars below to be
-            used
-            for WebRTC animating.</H1>
-        <br>
-        <H2>To create your own flexatar please use our IOS TestFlight. The result will appear here almost immediately.
-        </H2>
-        <br>
+        <H2> To participate in WebRTC conference press any icon below</H2>
+        <H2> You can easily create your own flexatar <a href="/cap">here</a> </H2>
+
+        <i>To get a high quality flexatar, please use our TestFligh. Apply for access</i>
+
+        <H2> Please also try our WebGL <a href="/webgl">demo</a> to ensure flexatar rendering in your browser</H2>
+
+        <i> Flexatars is a full-fledged human 3D model created with our proprietary patent pending technology.
+            <br>
+            Source code of the demo is available on <a href="https://github.com/dmisol/sfu2">github</a>.</i>
+
         <div id="human">
             <H1>Human Flexatars</H1>
         </div>
@@ -29,39 +33,10 @@
         <H1>Please change your browser. For the demo, we are expecting either Chrome or Safari</H1>
     </div>
 
-    <div id="mode_select" style="display: none;">
-        <div> <b>
-                Now you can either
-                <p>
-                    <button type="button" onclick="window.main()">Participate in WebRTC conference with other
-                        humans</button>
-
-                </p>
-                <div>
-                    or <button type="button" onclick="window.Bot()">Talk to a ChatGPT-powered bot </button>
-                </div>
-            </b>
-        </div>
-
-        <i>
-            <p>
-                The animating and rendering procedures are light-weighted and can be performed in browser.
-            </p>
-            <p>
-                Once upon a time we are planning to implement it with WebGL.
-            </p>
-        </i>
-        <div> <i>
-                Sources of this demo are here:
-                <a href="https://github.com/dmisol/sfu2">github.com/dmisol/sfu2</a>
-            </i>
-        </div>
-    </div>
-
     <div id="note" style="display: none;">
         <i>You'll see your flexatar video slightly delayed, not matching your voice.
             <br>
-            That's fine: your visavi will see it "talking" syncchonously with your speech.
+            That's fine: your visavi will see it "talking" synchonously with your speech.
         </i>
     </div>
 
@@ -77,7 +52,7 @@
     const dwn = document.getElementById("dwnVideos");
     let cntr = 0;
     let bot = 0;
-    const modeSelect = document.getElementById("mode_select");
+    const modeSelect = document.getElementById("select_ftar");
     const note = document.getElementById("note");
 
     select_ftar();
@@ -126,7 +101,8 @@
         img.onclick = function continueWithFlexatar() {
             ftar = key;
             document.getElementById("select_ftar").style.display = 'none';
-            modeSelect.style.display = 'block';
+            //modeSelect.style.display = 'block';
+            main();
         };
         p.appendChild(img);
     }
@@ -135,12 +111,15 @@
         bot = 1;
         main();
     }
+
     function main() {
         modeSelect.style.display = 'none';
-        note.style.display = 'block';
-        setTimeout(() => {
-            note.style.display = 'none';
-        }, "3000");
+        if (bot == 0) {
+            note.style.display = 'block';
+            setTimeout(() => {
+                note.style.display = 'none';
+            }, "5000");
+        }
 
         navigator.mediaDevices.getUserMedia({
             video: false,

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/dmisol/sfu2/internal/defs"
 	"github.com/gorilla/websocket"
@@ -29,6 +30,19 @@ func NewUser(ctx context.Context, room defs.Room, conf *defs.Conf, media defs.Me
 		<-ctx.Done()
 		log.Println("context timeout")
 		c.Close()
+	}()
+
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		defer t.Stop()
+
+		for {
+			<-t.C
+			if err := c.WriteJSON(&websocketMessage{Event: "ping"}); err != nil {
+				log.Println("ping stop", err)
+				return
+			}
+		}
 	}()
 
 	// Create new PeerConnection

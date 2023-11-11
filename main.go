@@ -12,7 +12,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"text/template"
 
 	"github.com/dmisol/sfu2/internal/bot"
 	"github.com/dmisol/sfu2/internal/defs"
@@ -25,14 +24,14 @@ import (
 )
 
 const (
-	useDebugRoom = true
-	unixProxy    = "/tmp/processing.sock"
-	ct           = "Content-Type"
+	useDebugRoom     = true
+	unixProxyData    = "/tmp/processing.sock"
+	unixProxyAndroid = "/tmp/android.sock"
+	ct               = "Content-Type"
 )
 
 var (
-	addr          = flag.String("addr", ":8080", "http service address")
-	indexTemplate = &template.Template{}
+	addr = flag.String("addr", ":8080", "http service address")
 
 	roomBot, roomGeneric, roomDebug *rtc.Room
 	conf                            *defs.Conf
@@ -81,6 +80,8 @@ func main() {
 	// forward request for processing
 	c.Get("/data", proxyHandler)
 	c.Post("/data", proxyHandler)
+	c.Get("/android", proxyHandler)
+	c.Post("/android", proxyHandler)
 
 	// trigger to involve newly-created ftars
 	c.Post("/ftar", func(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +196,7 @@ func roomHandler(w http.ResponseWriter, r *http.Request) {
 	if runBot {
 		log.Println("user with animated bot, bot room")
 		aiBot := bot.NewBot(ctx, conf.BotUrl) // to enambe bot act as a peer
-		media := media.NewRegularMedia(roomBot, aiBot, ftar)
+		media := media.NewRegularMedia(roomBot, aiBot, ftar, cancel)
 		rtc.NewUser(ctx, roomBot, conf, media, w, r)
 		return
 	}
@@ -207,15 +208,20 @@ func roomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("regular user (no flexatar), generic room")
-	media := media.NewRegularMedia(roomGeneric, nil, "")
+	media := media.NewRegularMedia(roomGeneric, nil, "", cancel)
 	rtc.NewUser(ctx, roomGeneric, conf, media, w, r)
 
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	m := r.Method
-	log.Println("serving /data", m)
+	log.Println("serving", r.URL.Path, m)
 	url := "http://tmp.1"
+
+	us := unixProxyData
+	if strings.Contains(r.URL.Path, "android") {
+		us = unixProxyAndroid
+	}
 
 	values := r.URL.Query()
 	cntr := 0
@@ -237,7 +243,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		cl = &http.Client{
 			Transport: &http.Transport{
 				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-					return net.Dial("unix", unixProxy)
+					return net.Dial("unix", us)
 				},
 			},
 		}
@@ -264,6 +270,8 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

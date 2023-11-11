@@ -1,0 +1,195 @@
+<html>
+<head>
+
+    <script src="matrixop.js"></script>
+    <script src="interpolation.js"></script>
+    <script src="flexatar.js"></script>
+
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flexatar WebGL demo</title>
+    <style>
+        body {
+            background-color: black; /* Set the background color to black */
+            color: white; /* Set the text color to white for better contrast */
+        }
+        .flexatar-canvas {
+            position: fixed;
+            top: 50%; /* 50% from the top of the viewport */
+            left: 50%; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            margin: auto;
+            height: 320px;
+            width: 240px;
+        }
+        .fixed-video {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: auto;
+            height: 80vh;
+            width: auto;
+        }
+        .start-video-button {
+            position: fixed;
+            top: 30%; /* 50% from the top of the viewport */
+            left: 50%; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+        }
+        .cap-button {
+            position: fixed;
+            top: 70vh; /* 50% from the top of the viewport */
+            left: 50vw; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 20px;
+        }
+        .make-again-button {
+            position: fixed;
+            top: 20vh; /* 50% from the top of the viewport */
+            left: 50vw; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 20px;
+        }
+        .to-conference-button {
+            position: fixed;
+            top: 80vh; /* 50% from the top of the viewport */
+            left: 50vw; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 20px;
+        }
+        .image-container {
+            position: fixed;
+            top: 75vh; /* Adjust the top position as needed */
+            left: 10vw; /* Adjust the left position as needed */
+            transform: translate(0%, -100%);
+            width: 30vh;
+            height: auto;
+            z-index: 1;
+        }
+
+        .fixed-video-pt {
+            position: fixed;
+            top: 20px; /* Distance from the top of the viewport */
+            right: 5vw; /* Distance from the right of the viewport */
+            margin: 0px; /* Margin around the video element */
+            width: 90vw; /* 80% of the viewport width */
+            background-color: #000;
+            z-index: 0; /* Set a higher z-index if necessary */
+        }
+        .start-video-button {
+            position: fixed;
+            top: 50vh; /* 50% from the top of the viewport */
+            left: 50vw; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 20px;
+        }
+        .cap-button-pt {
+            position: fixed;
+            top: 80vh; /* 50% from the top of the viewport */
+            left: 50vw; /* 50% from the left of the viewport */
+            transform: translate(-50%, -50%); /* Center the button */
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 20px;
+        }
+        .image-container-pt {
+            position: fixed;
+            top: 68vh; /* Adjust the top position as needed */
+            left: 10vw; /* Adjust the left position as needed */
+            transform: translate(0%, -100%);
+            width: 30vw;
+            height: auto;
+            z-index: 1;
+        }
+        .page-header {
+            position: fixed;
+            top: 10px;
+            left: 50vw;
+            transform: translate(-50%, -50%);
+
+        }
+        .counter {
+            position: fixed;
+            top: 50px;
+            left: 50vw;
+            transform: translate(-50%, -50%);
+
+        }
+        ol {
+            font-size: 24px; /* Set the font size */
+        }
+    </style>
+</head>
+<body>
+
+
+<!--<button id="rec" onclick="rec()">Record</button>-->
+<!--<button id="stop" style="display: none" onclick="stop()">Stop</button>-->
+<!--<button id="play" style="display: none" onclick="play()">Play</button>-->
+
+    <img id="face_front" src="file/assistant/face_front.png" class="image-container" style="display: none;" alt="Image Description">
+    <img id="face_left" src="file/assistant/face_left.png" class="image-container" style="display: none;" alt="Image Description">
+    <img id="face_right" src="file/assistant/face_right.png" class="image-container" style="display: none;" alt="Image Description">
+    <img id="face_down" src="file/assistant/face_down.png" class="image-container" style="display: none;" alt="Image Description">
+    <img id="face_up" src="file/assistant/face_up.png" class="image-container" style="display: none;" alt="Image Description">
+
+    <button id="stVidBtn" class="start-video-button">Start Capture</button>
+    <video id="video" class="fixed-video" style="display: none;"  autoplay playsinline></video>
+    <button id="captureBtn" class="cap-button" style="display: none;">Capture Photo</button>
+
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+    <h2 id="timeHeader" class="page-header" style="display: none;"> Making flexatar </h2>
+    <p id="timeCounter" class="counter" style="display: none;" > 00 : 00 / ( 00:20 ) </p>
+    <ol id="helpList">
+        <li>Turn head the same angles as assistant shows.</li>
+        <li>Don't turn your head too much. </li>
+        <li>Pretend you are lazy to do it. </li>
+        <li>Keep mouth closed.</li>
+    </ol>
+    <canvas id="flexatarCanvas" class="flexatar-canvas" width="640" height="480" style="display: none;"></canvas>
+    <button id="makeAgianBtn" class="make-again-button" style="display: none;">Make again</button>
+    <button id="toConference" class="to-conference-button" style="display: none;">To conference</button>
+
+    <script src="flexatar_cap.js"></script>
+
+
+
+
+</body>
+</html>

@@ -29,7 +29,7 @@ const parentElement = document.getElementById("body");
 
 const flxCount = 2;
 const engines = [];
-const flxLinks = ["/file/flexatars/Valdemar.p","/file/flexatars/me.p","/file/flexatars/pat0.p"];
+const flxLinks = ["/file/flexatars/flx1.p","/file/flexatars/flx2.p","/file/flexatars/flx3.p"];
 (async function () {
 
 
@@ -41,7 +41,21 @@ for (let i = 0; i < flxLinks.length; i++) {
     flxCanvas.height = 320;
     flxCanvas.style.border = "2px solid";
     parentElement.appendChild(flxCanvas);
-    const rEngine = await makeFlexatar(flxCanvas,flxLinks[i])
+            aBuffer = await fetch(flxLinks[i])
+            .then(response => {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok');
+                }
+                return response.arrayBuffer();
+            });
+//            .then(arrayBuffer => {
+//
+//
+//            })
+//            .catch(error => {
+//                console.error('Fetch error:', error);
+//            });
+    const rEngine = await makeFlexatar(flxCanvas,aBuffer)
 
 
     engines.push(rEngine)

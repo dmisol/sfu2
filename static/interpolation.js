@@ -118,7 +118,7 @@ function makeInterUnit(point,triangles,indices,border){
     for (let i = 0; i < 3; i++) {
         bshpIdx.push(indices[triIdx * 3 + i]);
     }
-    return [bshpIdx,weights]
+    return [bshpIdx,weights,[point[0]-calculatedPoint[0],point[1]-calculatedPoint[1]]]
 
 }
 

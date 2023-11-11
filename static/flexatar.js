@@ -356,8 +356,10 @@ class TextureArray{
     }
 }
 
+
+
 class FlexatarUnit{
-    constructor(url,flexatarCommon){
+    constructor(arrayBuffer,flexatarCommon){
         this.isReady = false;
         this.readyCallback = null;
 
@@ -378,8 +380,17 @@ class FlexatarUnit{
         this.mouthIdx = null;
         this.keyVtx = null;
         this.eyelidBlendshape = null;
+        const uint8Array = new Uint8Array(arrayBuffer);
+        var blocks = unpackToBlocks(uint8Array);
 
-        fetch(url)
+        if (this.checkIfNeedInsertMouth(blocks)){
+            const mouthBlocks = unpackToBlocks(flexatarCommon.mouthDefault);
+            blocks = this.repackWithMouth(blocks,mouthBlocks)
+        }
+
+        this.makeFlxData(blocks,null);
+        this.makeTextures();
+        /*fetch(url)
             .then(response => {
                 if (!response.ok) {
                   throw new Error('Network response was not ok');
@@ -401,7 +412,7 @@ class FlexatarUnit{
             })
             .catch(error => {
                 console.error('Fetch error:', error);
-            });
+            });*/
 
     }
     async makeTextures(){
@@ -640,22 +651,31 @@ class FlexatarUnit{
         });
     }
     makeInterUnit(point){
-        const [bshpIdx,weights] = makeInterUnit(point,this.mandalaTriangles,this.mandalaFaces,this.mandalaBorder);
+        const [bshpIdx,weights,rot] = makeInterUnit(point,this.mandalaTriangles,this.mandalaFaces,this.mandalaBorder);
         const headCtrl = new Float32Array([0,0,0,0,0]);
         headCtrl[bshpIdx[0]] = weights[0];
         headCtrl[bshpIdx[1]] = weights[1];
         headCtrl[bshpIdx[2]] = weights[2];
-        return headCtrl;
+        const xScale = Math.abs(rot[0])/0.5;
+        const yScale = Math.abs(rot[1])/0.5;
+        const extForce = 0.5;
+        const xRot = -0.3 * extForce*(1.0+yScale)*rot[0];
+        const yRot = -0.5 * extForce*(1.0+xScale)*rot[1];
+
+        return [headCtrl,[xRot,yRot]];
 
     }
 
 }
+
+
 
 class RenderEngine{
     constructor(canvas,gl,flexatarCustom,flexatarUnit){
 
     this.flexatarUnit = flexatarUnit;
     this.headCtrl = new Float32Array([1.0,0,0,0,0]);
+    this.extraRot = [0.0,0.0];
     this.position = [0,0,0,0,0,0];
     this.speechState = [0.0,0.0,0.1,0.0,0];
     const [spBuff0,spBuff1,spBuff2] = flexatarCustom.speechBshp;
@@ -797,6 +817,7 @@ class RenderEngine{
            'uniform vec4 parSet3;' +
            'uniform mat4 vmMatrix;' +
            'uniform mat4 zRotMatrix;' +
+           'uniform mat4 extraRotMatrix;' +
 
            'void main(void) {' +
               ' vec2 speechBshp[5];' +
@@ -843,6 +864,7 @@ class RenderEngine{
               ' result.xy += eyebrowBshp*eyebrowWeight;' +
               ' result.xy += blinkBshp*blinkWeight;' +
 
+              ' result = extraRotMatrix*result;' +
               ' result = vmMatrix*result;' +
               ' result.x = atan(result.x/result.z)*5.0;' +
               ' result.y = atan(result.y/result.z)*5.0;' +
@@ -944,6 +966,7 @@ class RenderEngine{
         gl.uniformMatrix4fv(vmMatrixLoc, false, viewModelMat);
 
         this.zRotMatrixLoc = gl.getUniformLocation(shaderProgram, 'zRotMatrix');
+        this.extraRotMatrixLoc = gl.getUniformLocation(shaderProgram, 'extraRotMatrix');
         this.viewModelMatrix = viewModelMat;
 
 //    ------MOUTH BUFFER CONNECTION BLOCK-----
@@ -985,6 +1008,7 @@ class RenderEngine{
 
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.viewport(0,0,canvas.width,canvas.height);
+//            this.speechState[2] = -0.7
 
             const parSet0 = new Float32Array([hc[0],hc[1],hc[2],hc[3]]);
             const parSet1 = new Float32Array([hc[4],this.ratio,this.position[0],this.position[1]]);
@@ -992,9 +1016,12 @@ class RenderEngine{
             const parSet3 = new Float32Array([this.speechState[3],this.speechState[4],this.position[4],this.position[5]]);
             const zRotMat = m4.zRotation(-this.position[3]);
             const zRotMatMouth = m4.zRotation(this.position[3]);
-            const keyVtx = this.calcKeyVtx(zRotMat);
+            const extraRotMatrix = m4.multiply(m4.yRotation(this.extraRot[0]),m4.xRotation(this.extraRot[1]))
+
+            const keyVtx = this.calcKeyVtx(zRotMat,extraRotMatrix);
             const [topMPivot,botMPivot,lipSize] = this.calcMouthPivot();
             const mouthScale = (keyVtx[5][0]-keyVtx[4][0])/lipSize;
+
 
 //------------MOUTH RENDER BLOCK------------
             gl.useProgram(this.mouthProgram);
@@ -1017,8 +1044,10 @@ class RenderEngine{
             gl.uniform4fv(this.parSet3MouthLocation, parSet3Mouth);
 
             gl.uniformMatrix4fv(this.zRotMatrixLocMouth, false, zRotMatMouth);
+
             gl.uniform1i(this.isTopLocation, 0);
             gl.drawElements(gl.TRIANGLES, this.idxGlBufferMouth.length, gl.UNSIGNED_SHORT,0);
+
             const parSet2MouthTop = new Float32Array([topMPivot[0],topMPivot[1],botMPivot[0],botMPivot[1]]);
             const parSet1MTop = new Float32Array([hc[4],this.ratio,keyVtx[1][0],keyVtx[0][1]]);
             gl.uniform4fv(this.parSet1MouthLocation, parSet1MTop);
@@ -1046,6 +1075,7 @@ class RenderEngine{
             gl.uniform4fv(this.parSet3Location, parSet3);
 
             gl.uniformMatrix4fv(this.zRotMatrixLoc, false, zRotMat);
+            gl.uniformMatrix4fv(this.extraRotMatrixLoc, false, extraRotMatrix);
 
             gl.drawElements(gl.TRIANGLES, this.flexatarCustom.idxGlBuffer.length, gl.UNSIGNED_SHORT,0);
 
@@ -1071,7 +1101,7 @@ class RenderEngine{
         return [topPivot,botPivot,lipSize];
 
     }
-    calcKeyVtx(zRotMatrix){
+    calcKeyVtx(zRotMatrix,extraRotMatrix){
 
         const hc = this.headCtrl;
         const p = this.position;
@@ -1092,6 +1122,7 @@ class RenderEngine{
                 vtx[1]+=speechBshp;
             }
 
+            vtx = m4.multiplyByV4(extraRotMatrix,vtx);
             vtx = m4.multiplyByV4(this.viewModelMatrix,vtx);
 
             vtx[0] = this.flxScale * Math.atan(vtx[0]/vtx[2]);
@@ -1140,9 +1171,13 @@ async function makeFlexatar(canvas,url){
         animFrameCounter += 1;
 
         const animationFrame = flexatarCommon.getAnimationFrame(animFrameCounter);
+//        const rx = (animationFrame[3]-0.5)*4.0+0.5;
+//        const ry = (animationFrame[4]-0.45)*4.0 +0.45;
         const rx = animationFrame[3];
         const ry = animationFrame[4];
-        rEngine.headCtrl = flexatar.makeInterUnit([rx,ry]);
+        const interU = flexatar.makeInterUnit([rx,ry]);
+        rEngine.headCtrl = interU[0];
+        rEngine.extraRot = interU[1];
         rEngine.position = [animationFrame[0],animationFrame[1],animationFrame[2],animationFrame[5],animationFrame[6],animationFrame[8]];
     }
     const timerId = setInterval(animationTimer, 1000/20);

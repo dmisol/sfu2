@@ -4,5 +4,5 @@ The git is aimed to act as a demo for our **flexatar** technology. The SFU inher
 
 SFU decodes opus audio track, sends it to animating core, builds h.264 video track and uses it as if came from a user. The demo to create your **flexatar** and use in **WebRTC** conference can be found at ![https://flexatar.com](https://flexatar.com).
 
-The final goal is to offer ![in-browser WebGL rendering](https://github.com/pion/example-webrtc-applications), introducing personalized **WebRTC Virtual Webcam**.
+The final goal is to offer ![in-browser WebGL rendering](https://github.com/dmisol/flexatar-virtual-webcam), introducing personalized **WebRTC Virtual Webcam**.
 
